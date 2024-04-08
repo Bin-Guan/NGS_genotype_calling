@@ -46,4 +46,4 @@ write_tsv(heavy, edited_tsv_file, na = "")
 
 heavy_filtered <- heavy %>% 
   filter(grepl(",chr", Genomic_Location) | SVtype != "BND") 
-openxlsx::write.xlsx(heavy_filtered, file = edited_xlsx_file, firstRow = TRUE, firstCol = TRUE)
+openxlsx::write.xlsx(list("clinSV" = heavy_filtered), file = edited_xlsx_file, firstRow = TRUE, firstCol = TRUE)
