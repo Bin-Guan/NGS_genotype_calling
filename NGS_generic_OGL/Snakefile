@@ -130,7 +130,7 @@ wildcard_constraints:
 rule all:
 	input:
 		expand('gvcfs/{sample}.g.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())) if config['GATKgvcf'] == 'TRUE' else 'dummy.txt',
-		expand('bam/{sample}.cram', sample=list(SAMPLE_LANEFILE.keys())) if config['cram'] == 'TRUE' else expand('bam/{sample}.bam', sample=list(SAMPLE_LANEFILE.keys())),
+		expand('cram/{sample}.cram', sample=list(SAMPLE_LANEFILE.keys())) if config['cram'] == 'TRUE' else expand('bam/{sample}.bam', sample=list(SAMPLE_LANEFILE.keys())),
 		# 'GATK_metrics/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
 		'fastqc/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
 		 expand('picardQC/{sample}.insert_size_metrics.txt', sample=list(SAMPLE_LANEFILE.keys())) if config['picardQC'] == 'TRUE' else 'dummy.txt',
@@ -141,7 +141,9 @@ rule all:
 		expand('manta/manta.{sample}.annotated.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['manta'] == 'TRUE' else 'dummy.txt',
 		expand('scramble_anno/{sample}.scramble.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['SCRAMble'] == 'TRUE' else 'dummy.txt',
 		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['freebayes_phasing'] == 'TRUE' else 'deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt',
-		'bcmlocus/combine.bcmlocus.done.txt' if config['bcmlocus'] == 'TRUE' else 'dummy.txt'
+		'bcmlocus/combine.bcmlocus.done.txt' if config['bcmlocus'] == 'TRUE' else 'dummy.txt',
+		expand('jax-cnv/{sample}.merge.bed', sample=list(SAMPLE_LANEFILE.keys())),
+		expand('clinSV/{sample}.clinsv.SV-CNV.vcf.gz', sample=list(SAMPLE_LANEFILE.keys()))
 
 localrules: dummy
 rule dummy:
@@ -153,7 +155,7 @@ rule dummy:
 		"""
 		touch {output}
 		"""
-
+#threads need to be set in this snakemake file (unnecessary to set in the cluster.json). Did not work if set at the cluster.json only.
 #9/1/2021: cram of USUPH data under the settings did not work with 56 threads because of sambamba cannot write when using 200G lscratch, also it took a long time to queue if using 56 threads and 20h walltime
 #9/1/2021: Threads 28, 400g lscratch, 100g mem, 12h walltime, is quick to run. Took 9h13min - 12h40min, upto 53gb memory
 #may reduce to 36 threads: https://blog.dnanexus.com/2020-03-10-bwa-mem2-review/
@@ -200,19 +202,19 @@ if config['inputFileType'] == 'single_lane_fastq':
 			bai = lambda wildcards: expand('lane_bam/{lane}.bam.bai', lane = list(set([re.split(r'|'.join(config['lane_pair_delim']),x.split('/')[-1])[0] for x in SAMPLE_LANEFILE[wildcards.sample]])))
 		output:
 			bam = 'sample_bam/{sample}.markDup.bam',
-			bai = 'sample_bam/{sample}.markDup.bai'
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
 		shell:
 			"""
 			cp -p -l {input.bam} {output.bam}
 			cp -p -l {input.bai} {output.bai}
 			"""
-elif config['inputFileType'].upper() in ['BAM', 'CRAM']:
+elif config['inputFileType'].upper() in ['BAM-REALIGN', 'CRAM-REALIGN']:
 	rule realign: # up to 12.5h for cram
 		input:
 			lambda wildcards: join('old_bam/', str(SAMPLE_LANEFILE[wildcards.sample][0]))
 		output:
 			bam = 'sample_bam/{sample}.markDup.bam',
-			bai = 'sample_bam/{sample}.markDup.bai'
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
 		threads: 56
 		params:
 			read_group = rg
@@ -236,14 +238,12 @@ elif config['inputFileType'].upper() in ['BAM', 'CRAM']:
 				 		| samblaster -M --addMateTags --quiet \
 						| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t $(({threads}-2)) -o {output.bam} \
 							<(sambamba view -S -f bam -l 0 -t $(({threads}-2)) /dev/stdin)
-						mv {output.bam}.bai {output.bai}
 					elif [[ "{config[markDup]}" == "FALSE" ]]; then
 						java -Xmx112g -jar $BAZAMPATH/bazam.jar -bam {input} \
 						| bwa mem -t $(({threads}-2)) -K 100000000 -M -Y -B 4 -O 6 -E 1 -p -R {params.read_group} {config[ref_genome]} - \
 				 		| samblaster -M --acceptDupMarks --addMateTags --quiet \
 						| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t $(({threads}-2)) -o {output.bam} \
 							<(sambamba view -S -f bam -l 0 -t $(({threads}-2)) /dev/stdin)
-						mv {output.bam}.bai {output.bai}
 					else
 						java -Xmx112g -jar $BAZAMPATH/bazam.jar -bam {input} \
 							| bwa-mem2 mem -t $(({threads}-2)) -K 100000000 -M -Y -B 4 -O 6 -E 1 -p -R {params.read_group} {config[bwa-mem2_ref]} \
@@ -267,14 +267,12 @@ elif config['inputFileType'].upper() in ['BAM', 'CRAM']:
 				 			| samblaster -M --addMateTags --quiet \
 							| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t $(({threads}-2)) -o {output.bam} \
 								<(sambamba view -S -f bam -l 0 -t $(({threads}-2)) /dev/stdin)
-						mv {output.bam}.bai {output.bai}
 					elif [[ "{config[markDup]}" == "FALSE" ]]; then
 						java -Xmx112g -Dsamjdk.reference_fasta={config[old_cram_ref]} -jar $BAZAMPATH/bazam.jar -bam {input} \
 							| bwa mem -t $(({threads}-2)) -K 100000000 -M -Y -B 4 -O 6 -E 1 -p -R {params.read_group} {config[ref_genome]} - \
 				 			| samblaster -M --acceptDupMarks --addMateTags --quiet \
 							| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t $(({threads}-2)) -o {output.bam} \
 								<(sambamba view -S -f bam -l 0 -t $(({threads}-2)) /dev/stdin)
-						mv {output.bam}.bai {output.bai}
 					else
 						java -Xmx112g -Dsamjdk.reference_fasta={config[old_cram_ref]} -jar $BAZAMPATH/bazam.jar -bam {input} \
 							| bwa-mem2 mem -t $(({threads}-2)) -K 100000000 -M -Y -B 4 -O 6 -E 1 -p -R {params.read_group} {config[bwa-mem2_ref]} - \
@@ -291,6 +289,52 @@ elif config['inputFileType'].upper() in ['BAM', 'CRAM']:
 					fi
 					;;
 			esac
+			"""
+elif config['inputFileType'].upper() in ['BAM']:
+	localrules: copybam
+	rule copybam:
+		input:
+			lambda wildcards: join('old_bam/', str(SAMPLE_LANEFILE[wildcards.sample][0]))
+		output:
+			bam = 'sample_bam/{sample}.markDup.bam',
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
+		threads: 32
+		resources: res=1
+		shell:
+			"""
+			BAMFILE={input}
+			if [ -e {input}.bai ]; then
+				cp -p -l {input} {output.bam}
+				cp -p -l {input}.bai {output.bai}
+			elif [ -e ${{BAMFILE%.bam}}.bai ]; then
+				cp -p -l {input} {output.bam}
+				cp ${{BAMFILE%.bam}}.bai {output.bai}
+			else
+				if [[ $(module list 2>&1 | grep "sambamba" | wc -l) < 1 ]]; then module load {config[sambamba_version]}; fi
+				cp -p -l {input} {output.bam}
+				sambamba index -t $(({threads}-2)) {output.bam}
+			fi
+			"""
+elif config['inputFileType'].upper() in ['CRAM']:
+	rule cram2bam:
+		input:
+			lambda wildcards: join('old_bam/', str(SAMPLE_LANEFILE[wildcards.sample][0]))
+		output:
+			bam = 'sample_bam/{sample}.markDup.bam',
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
+		threads: 32
+		shell:
+			"""
+			module load {config[samtools_version]}
+			BAMFILE={input}
+			if [ -e {input}.crai ] || [ -e ${{BAMFILE%.cram}}.crai ] ; then
+				echo "index present"
+			else
+				samtools index -@ $(({threads}-2)) {input}
+			fi
+			samtools view -T {config[cram_ref]} -@ $(({threads}-2)) \
+				-b -o {output.bam} {input}
+			samtools index -@ $(({threads}-2)) {output.bam}
 			"""
 else:
 	rule align:
@@ -337,7 +381,7 @@ else:
 			bai = lambda wildcards: expand('lane_bam/{lane}.bam.bai', lane = list(set([re.split(r'|'.join(config['lane_pair_delim']),x.split('/')[-1])[0] for x in SAMPLE_LANEFILE[wildcards.sample]])))
 		output:
 			bam = 'sample_bam/{sample}.markDup.bam',
-			bai = 'sample_bam/{sample}.markDup.bai'
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
 		threads: 32
 		shell:
 			"""
@@ -345,7 +389,6 @@ else:
 			case "{input.bam}" in
 				*\ *)
 					sambamba merge -t {threads} -l 6 {output.bam} {input.bam}
-					mv {output.bam}.bai {output.bai}
 					;;
 				*)
 					cp {input.bam} {output.bam}
@@ -397,7 +440,7 @@ else:
 rule fastqc:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		directory('fastqc/{sample}')
 	threads: 8
@@ -423,7 +466,7 @@ rule picard_alignmentQC:
 #insert size and alignment metrics
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		insert_size_metrics = 'picardQC/{sample}.insert_size_metrics.txt',
 		insert_size_histogram = 'picardQC/{sample}.insert_size_histogram.pdf',
@@ -453,7 +496,7 @@ rule picard_alignmentQC:
 rule coverage:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		thresholds = 'coverage/mosdepth/{sample}.md.thresholds.bed.gz',
 		summary = 'coverage/mosdepth/{sample}.md.mosdepth.summary.txt',
@@ -502,10 +545,10 @@ rule mean_coverage:
 rule bam_to_cram:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		cram = 'bam/{sample}.cram',
-		crai = 'bam/{sample}.crai'
+		cram = 'cram/{sample}.cram',
+		crai = 'cram/{sample}.crai'
 	threads:
 		8
 	shell:
@@ -522,10 +565,10 @@ localrules: keep_bam
 rule keep_bam:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		bam = 'bam/{sample}.bam',
-		bai = 'bam/{sample}.bai'
+		bai = 'bam/{sample}.bam.bai'
 	shell:
 		"""
 		cp -p -l {input.bam} {output.bam}
@@ -536,7 +579,7 @@ rule keep_bam:
 rule deepvariantS1:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		examples = temp(directory('deepvariant/{sample}/examples')),
 		gvcf_tfrecords = temp(directory('deepvariant/{sample}/gvcf_tfrecords'))
@@ -616,7 +659,7 @@ rule deepvariantS3:
 		gvcf_tfrecords = 'deepvariant/{sample}/gvcf_tfrecords',
 		tfrecord = 'deepvariant/{sample}/{sample}.call_variants_output.tfrecord.gz',
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		vcf = 'deepvariant/vcf/{sample}.vcf.gz',
 		gvcf = 'deepvariant/gvcf/{sample}.g.vcf.gz'
@@ -730,7 +773,7 @@ rule dv_whatshap:
 		glnexus = 'deepvariant/deepvariant.gvcf.merge.done.txt',
 		#vcf = 'deepvariant/vcf/{sample}.vcf.gz',
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		phasedvcf = 'deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz',
 		phasedtbi = 'deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz.tbi'
@@ -799,7 +842,7 @@ rule merge_deepvariant_glnexusVcf:
 rule scramble:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		cluster = temp('scramble/{sample}.cluster.txt'),
 		mei = 'scramble/{sample}_MEIs.txt'
@@ -866,7 +909,7 @@ rule scramble_annotation:
 rule manta:
 	input:
  		bam = 'sample_bam/{sample}.markDup.bam',
- 		bai = 'sample_bam/{sample}.markDup.bai'
+ 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		'manta/manta.{sample}.annotated.tsv'
 	threads: 56
@@ -910,7 +953,7 @@ localrules: mutserve
 rule mutserve:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		vcf = 'mutserve/{sample}.mt.vcf.gz',
 		tbi = 'mutserve/{sample}.mt.vcf.gz.tbi'
@@ -922,7 +965,27 @@ rule mutserve:
 		$MUTSERVE_HOME/mutserve call --reference $MUTSERVE_HOME/rCRS.fasta --output {output.vcf} --threads 2 {input.bam}
 		$MUTSERVE_HOME/mutserve annotate --input mutserve/{wildcards.sample}.txt --annotation $MUTSERVE_HOME/rCRS_annotation_2020-08-20.txt --output mutserve/{wildcards.sample}.AnnotatedVariants.txt
 		tabix -f -p vcf {output.vcf}
+		if [[ $(module list 2>&1 | grep "vcfanno" | wc -l) < 1 ]]; then module load {config[vcfanno_version]}; fi
+		if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
+		bcftools norm --multiallelics -any --output-type u {output.vcf} \
+			| bcftools norm --check-ref w --fasta-ref $MUTSERVE_HOME/rCRS.fasta --output-type v - \
+			| bgzip -f > mutserve/{wildcards.sample}.mt.norm.vcf.gz
+		tabix -p vcf -f mutserve/{wildcards.sample}.mt.norm.vcf.gz
+		vcfanno ~/git/NGS_genotype_calling/NGS_generic_OGL/mitomap.conf mutserve/{wildcards.sample}.mt.norm.vcf.gz \
+			| bgzip -f > mutserve/{wildcards.sample}.mt.mm.vcf.gz
+		mv mutserve/{wildcards.sample}.mt.mm.vcf.gz {output.vcf}
+		tabix -f -p vcf {output.vcf}
+		bcftools query -H -f '%CHROM\t%POS\t%REF\t%ALT\t%INFO/Pubmed\t%INFO/mitomapDisease\t%INFO/mitomapDiseaseStatus\n' {output.vcf} \
+			| sed -e '1 s/^#//' -e '1 s/\[[0-9]*\]//g' \
+			> mutserve/{wildcards.sample}.mm.tsv
+		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/mutserv.mitomap.R \
+			mutserve/{wildcards.sample}.AnnotatedVariants.txt \
+			mutserve/{wildcards.sample}.mm.tsv \
+			mutserve/{wildcards.sample}.mm1.tsv
+		mv mutserve/{wildcards.sample}.mm1.tsv mutserve/{wildcards.sample}.AnnotatedVariants.txt
+		rm mutserve/{wildcards.sample}.mt.norm.vcf.gz* mutserve/{wildcards.sample}.mm.tsv
 		"""
+## https://github.com/seppinho/mutserve/blob/master/files/rCRS_annotation_descriptions.md
 
 localrules: haplocheck
 rule haplocheck:
@@ -954,10 +1017,10 @@ rule haplocheck:
 rule bcm_locus:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		bam = 'bam/bcmlocus/{sample}.bcm.bam',
-		bai = 'bam/bcmlocus/{sample}.bcm.bai',
+		bam = 'bcmlocus/bam/{sample}.bcm.bam',
+		bai = 'bcmlocus/bam/{sample}.bcm.bam.bai',
 		bcm_mosdepth = 'bcmlocus/mosdepth/{sample}.md.regions.bed.gz',
 		haplo_vcf = temp('bcmlocus/{sample}.haplo.vcf.gz'),
 		haplo_vcf_tbi = temp('bcmlocus/{sample}.haplo.vcf.gz.tbi'),
@@ -976,7 +1039,6 @@ rule bcm_locus:
 		| samblaster -M --addMateTags --quiet \
 		| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t 16 -o {output.bam} \
 			<(sambamba view -S -f bam -l 0 -t 16 /dev/stdin)
-		mv {output.bam}.bai {output.bai}
 		if [[ $(module list 2>&1 | grep "mosdepth" | wc -l) < 1 ]]; then module load {config[mosdepth_version]}; fi
 		mkdir -p bcmlocus/mosdepth
 		cd bcmlocus/mosdepth
@@ -1091,7 +1153,7 @@ rule combine_bcmlocus:
 rule split_bam_by_chr:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
-		bai = 'sample_bam/{sample}.markDup.bai'
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		bam = temp('sample_bam/chr_split/{sample}/{sample}__{chr}.bam'),
 		bai = temp('sample_bam/chr_split/{sample}/{sample}__{chr}.bai'),
@@ -1341,6 +1403,87 @@ rule merge_dv_fb_vcfs:
 # 	tabix -f -p vcf prioritization/{config[analysis_batch_name]}.GRCh37.vcf.gz
 # fi
 # touch {output}
+
+rule jaxcnv:
+	input:
+		bam = 'sample_bam/{sample}.markDup.bam',
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
+	output:
+		bed = 'jax-cnv/{sample}.merge.bed'
+	shell:
+		"""
+		module load JAX-CNV/20240208
+		JAX-CNV GetCnvSignal -f {config[ref_genome]} \
+			-k /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.kmer \
+			-b {input.bam} -o jax-cnv/{wildcards.sample}
+		JaxCNVMerge.R -i jax-cnv/{wildcards.sample}
+		module load {config[annotsv_version]}
+		AnnotSV -SVinputFile {output.bed} \
+			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
+			-outputDir jax-cnv \
+			-outputFile jax-cnv/{wildcards.sample}.jaxcnv.annotated.0.tsv
+		awk -F "\t" 'BEGIN{{OFS="\t"}} {{print $0, "{wildcards.sample}"}}' {output.bed} \
+			> {output.bed}.temp && mv {output.bed}.temp {output.bed}
+		module load {config[R_version]}
+		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/jaxCNV.R \
+			jax-cnv/{wildcards.sample}.jaxcnv.annotated.0.tsv \
+			{wildcards.sample} jax-cnv/{wildcards.sample}.jaxcnv.annotated.tsv
+		rm jax-cnv/{wildcards.sample} jax-cnv/{wildcards.sample}.jaxcnv.annotated.0.tsv
+		"""
+
+rule clinsv:
+	input:
+		bam = 'sample_bam/{sample}.markDup.bam',
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
+	output:
+		vcf = 'clinSV/{sample}.clinsv.SV-CNV.vcf.gz'
+	threads: 24
+	shell:
+		"""
+		module load clinsv/1.1
+		refdata_path=/usr/local/apps/clinsv/ref_hg38/clinsv/refdata-b38
+		input_path=$PWD
+		project_folder=$PWD/clinSV/{wildcards.sample}
+		mkdir -p $project_folder
+		singularity run --bind $refdata_path:/app/ref-data/refdata-b38 \
+			--bind $project_folder:/app/project_folder \
+			--bind $input_path:/app/input \
+			/usr/local/apps/clinsv/1.1/libexec/1.1.sif \
+			/app/clinsv/bin/clinsv \
+			-r all -f \
+			-p /app/project_folder/ \
+			-i "/app/input/sample_bam/{wildcards.sample}.markDup.bam" \
+			-ref /app/ref-data/refdata-b38
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz.tbi
+		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.PASS.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
+		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
+		module load {config[annotsv_version]} {config[samtools_version]} {config[R_version]}
+		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
+		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
+		tabix -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz
+		tabix -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz
+		AnnotSV -SVinputFile clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz \
+			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
+			-outputDir clinSV/{wildcards.sample} \
+			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv
+		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv clinSV/{wildcards.sample}.clinSV.PASS.annotated.tsv
+		AnnotSV -SVinputFile clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz \
+			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
+			-outputDir clinSV/{wildcards.sample} \
+			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
+		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
+		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/clinsv_author_excel.R \
+			{config[OGL_Dx_research_genes]} \
+			clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx \
+			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
+			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx
+		mv clinSV/{wildcards.sample}/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}.QC_report.pdf
+		if [ ! -e clinSV/result_description.docx ];	then
+			cp clinSV/{wildcards.sample}/results/result_description.docx clinSV/result_description.docx
+		fi
+		rm -rf clinSV/{wildcards.sample}
+		"""
 
 #sort necessary before mark_dup? it was sorted during the merge lane_bam step.
 rule picard_clean_sam:

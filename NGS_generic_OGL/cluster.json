@@ -52,6 +52,25 @@
 		"time" : "6:00:00",
 		"extra" : "--gres=lscratch:150"
 	},
+	"jaxcnv" :
+	{
+		"partition" : "norm,quick",
+		"extra" : "--gres=lscratch:100",
+		"time" : "1:00:00",
+		"threads" : "8",
+		"mem" : "64g"
+	},
+	"clinsv" :
+	{
+		"partition" : "norm",
+		"extra" : "--gres=lscratch:100",
+		"time" : "16:00:00",
+		"mem" : "64g"
+	},
+	"cram2bam" :
+	{
+		"threads" : "32"
+	},
 	"sve" :
 	{
 		"partition" : "norm",

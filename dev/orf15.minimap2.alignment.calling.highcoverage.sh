@@ -16,18 +16,25 @@ mkdir -p bam
 for fastq in fastq/*.fastq.gz; do
 sample=$(basename $fastq | sed "s/_reads.fastq.gz//" | sed "s/.fastq.gz//" | sed "s/-/_/");
 echo -e "$sample" >> manifest.csv
-minimap2 -a -x map-ont -Y -t 3 -R "@RG\tLB:QBplEx\tID:$sample\tSM:$sample" /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.mmi $fastq | sambamba sort -u --compression-level 6 --tmpdir=/lscratch/$SLURM_JOB_ID -t 3 -o bam/$sample.bam <(sambamba view -S -f bam --compression-level 0 -t 3 /dev/stdin);
+minimap2 -a -x map-ont -Y -t 3 -R "@RG\tLB:QBplEx\tID:$sample\tSM:$sample\tPL:ONT" /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.mmi $fastq | sambamba sort -u --compression-level 6 --tmpdir=/lscratch/$SLURM_JOB_ID -t 3 -o bam/$sample.bam <(sambamba view -S -f bam --compression-level 0 -t 3 /dev/stdin);
 done
 
-module load clair3/1.0.4 annovar/2020-06-08
+module load clair3/1.0.4 deepvariant/1.6.0 annovar/2020-06-08
 
 mkdir -p freebayes
 mkdir -p annotation
 
-mkdir -p clair3 clairAnnotation
+mkdir -p deepvariant clair3 clairAnnotation
 
 while read -r sample;
 do
+run_deepvariant --model_type ONT_R104 --num_shards 1 \
+ --ref /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa \
+ --regions /data/OGL/resources/bed/RPGR_ORF15.bed \
+ --reads bam/$sample.bam \
+ --output_vcf deepvariant/$sample.dv.vcf.gz \
+ --sample_name $sample \
+ --intermediate_results_dir /lscratch/$SLURM_JOB_ID
 clair3 \
   --bam_fn=bam/$sample.bam \
   --ref_fn=/data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa \
@@ -36,10 +43,10 @@ clair3 \
   --bed_fn=/data/OGL/resources/bed/RPGR_ORF15.bed \
   --model_path=/data/OGL/resources/clair3/ont_r1041/r1041_e82_400bps_sup_v420 \
   --sample_name=$sample \
-  --output=/lscratch/$SLURM_JOB_ID 
-#  --var_pct_full=1 \
-#  --ref_pct_full=1 \
-#  --var_pct_phasing=1
+  --output=/lscratch/$SLURM_JOB_ID \
+  --var_pct_full=1 \
+  --ref_pct_full=1 \
+  --var_pct_phasing=1
 #the last three is for amplicon sequencing, but caused missing variants in the first test run 
 #Will false negative increase if setting minimum read = 1 instead of 2 as in the default???
 cp /lscratch/$SLURM_JOB_ID/merge_output.vcf.gz clair3/$sample.vcf.gz
