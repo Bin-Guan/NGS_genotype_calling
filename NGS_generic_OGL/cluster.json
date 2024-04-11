@@ -164,6 +164,10 @@
 		"partition" : "norm",
 		"time" : "8:00:00"
 	},
+	"scramble_annotation" :
+	{
+		"mem" : "32G"
+	},
 	"picard_merge_bams" :
 	{
 		"partition" : "norm",

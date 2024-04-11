@@ -863,7 +863,8 @@ rule scramble:
 #			--eval-dels \ removed because deletion calling take s long time and other tools already check deletion.
 #--bind /gpfs,/spin1,/data,/lscratch,/scratch,/fdb
 #finished in seconds, <100Mb memory
-localrules: scramble_annotation
+
+#localrules: scramble_annotation
 rule scramble_annotation:
 	input:
 		mei = 'scramble/{sample}_MEIs.txt'

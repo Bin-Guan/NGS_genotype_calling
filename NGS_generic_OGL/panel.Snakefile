@@ -686,8 +686,7 @@ rule deepvariant:
 			--output_vcf $WORK_DIR/$(basename {output.vcf}) \
 			--output_gvcf $WORK_DIR/$(basename {output.gvcf}) \
 			--sample_name {wildcards.sample} \
-			--intermediate_results_dir $WORK_DIR \
-			--call_variants_extra_args="use_openvino=true"
+			--intermediate_results_dir $WORK_DIR
 		cd $PROJECT_WD
 		cp $WORK_DIR/$(basename {output.vcf})* deepvariant/vcf
 		cp $WORK_DIR/$(basename {output.gvcf})* deepvariant/gvcf

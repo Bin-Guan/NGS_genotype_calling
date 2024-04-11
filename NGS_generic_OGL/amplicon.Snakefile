@@ -485,7 +485,7 @@ rule keep_bam:
 		cp -p -l {input.bam} {output.bam}
 		cp -p -l {input.bai} {output.bai}
 		"""
-
+localrules: CoNVaDING_1
 rule CoNVaDING_1:
 	input:
 		bam = 'sample_bam/{sample}/{sample}.markDup.bam',
@@ -496,8 +496,8 @@ rule CoNVaDING_1:
 		sex = lambda wildcards: SAMPLE_SEX[wildcards.sample]
 	shell:
 		"""
-		module load {config[samtools_version]}
-		module load {config[R_version]}
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) < 1 ]]; then module load {config[samtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
 		case "{params.sex}" in
 			"1")
 				perl /data/OGL/resources/git/CoNVaDING/CoNVaDING.pl -mode StartWithBam \
@@ -505,8 +505,7 @@ rule CoNVaDING_1:
 					-outputDir /lscratch/$SLURM_JOB_ID \
 					-bed {config[bed]} \
 					-useSampleAsControl \
-					-controlsDir {config[CoNVaDING_ctr_dir]}_male \
-					-rmDup
+					-controlsDir {config[CoNVaDING_ctr_dir]}_male
 				mkdir -p CoNVaDING/normalized_coverage_male
 				cp /lscratch/$SLURM_JOB_ID/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt \
 					CoNVaDING/normalized_coverage_male/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt
@@ -526,8 +525,7 @@ rule CoNVaDING_1:
 					-outputDir /lscratch/$SLURM_JOB_ID \
 					-bed {config[bed]} \
 					-useSampleAsControl \
-					-controlsDir {config[CoNVaDING_ctr_dir]}_female \
-					-rmDup
+					-controlsDir {config[CoNVaDING_ctr_dir]}_female
 				mkdir -p CoNVaDING/normalized_coverage_female
 				cp /lscratch/$SLURM_JOB_ID/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt \
 					CoNVaDING/normalized_coverage_female/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt
@@ -547,14 +545,13 @@ rule CoNVaDING_1:
 					-outputDir /lscratch/$SLURM_JOB_ID \
 					-bed {config[bed]} \
 					-useSampleAsControl \
-					-controlsDir {config[CoNVaDING_ctr_dir]} \
-					-rmDup
+					-controlsDir {config[CoNVaDING_ctr_dir]}
 				mkdir -p CoNVaDING/normalized_coverage
-				cp /lscratch/$SLURM_JOB_ID/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt \
-					CoNVaDING/normalized_coverage/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt
-				chgrp OGL {config[CoNVaDING_ctr_dir]}/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt
+				cp /lscratch/$SLURM_JOB_ID/{wildcards.sample}.markDup.normalized.coverage.txt \
+					CoNVaDING/normalized_coverage/{wildcards.sample}.markDup.normalized.coverage.txt
+				chgrp OGL {config[CoNVaDING_ctr_dir]}/{wildcards.sample}.markDup.normalized.coverage.txt
 				Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/chrRD.R \
-					CoNVaDING/normalized_coverage/{wildcards.sample}.markDup.aligned.only.normalized.coverage.txt \
+					CoNVaDING/normalized_coverage/{wildcards.sample}.markDup.normalized.coverage.txt \
 					CoNVaDING/normalized_coverage/{wildcards.sample}.chrRD.pdf \
 					{config[chrRD_highcutoff]} \
 					{config[chrRD_lowcutoff]} \
@@ -574,7 +571,7 @@ rule CoNVaDING_1:
 				# cp /lscratch/$SLURM_JOB_ID/{wildcards.sample}.b37.aligned.only.normalized.coverage.txt \
 				# 	{config[CoNVaDING_ctr_dir]}/.
 
-#localrules: CoNVaDING_2 #10min 1 cpu and <0.5g mem
+localrules: CoNVaDING_2 #10min 1 cpu and <0.5g mem
 rule CoNVaDING_2:
 	input:
 		expand('CoNVaDING/progress1.{sample}', sample=list(SAMPLE_LANEFILE.keys())),
@@ -582,10 +579,10 @@ rule CoNVaDING_2:
 		'CoNVaDING/progress2.done'
 	shell:
 		"""
- 		filetest0=$((ls CoNVaDING/normalized_coverage/*.markDup.aligned.only.normalized.coverage.txt >> /dev/null 2>&1 && echo TRUE) || echo FALSE)
+ 		filetest0=$((ls CoNVaDING/normalized_coverage/*.markDup.normalized.coverage.txt >> /dev/null 2>&1 && echo TRUE) || echo FALSE)
 		if [ $filetest0 == "TRUE" ];
 		then
-			#cp -a CoNVaDING/normalized_coverage/*.markDup.aligned.only.normalized.coverage.txt {config[CoNVaDING_ctr_dir]}
+			#cp -a CoNVaDING/normalized_coverage/*.markDup.normalized.coverage.txt {config[CoNVaDING_ctr_dir]}
 			perl /data/OGL/resources/git/CoNVaDING/CoNVaDING.pl -mode StartWithMatchScore \
 				-inputDir CoNVaDING/normalized_coverage \
 				-outputDir  CoNVaDING/MatchScore \
@@ -610,10 +607,10 @@ rule CoNVaDING_2:
   			# 	-targetQcList CoNVaDING/TargetQcList \
   			# 	--outputDir CoNVaDING/finalList
 		fi
-		filetest1=$((ls CoNVaDING/normalized_coverage_male/*.markDup.aligned.only.normalized.coverage.txt >> /dev/null 2>&1 && echo TRUE) || echo FALSE)
+		filetest1=$((ls CoNVaDING/normalized_coverage_male/*.markDup.normalized.coverage.txt >> /dev/null 2>&1 && echo TRUE) || echo FALSE)
 		if [ $filetest1 == "TRUE" ];
 		then
-			#cp -a CoNVaDING/normalized_coverage_male/*.markDup.aligned.only.normalized.coverage.txt {config[CoNVaDING_ctr_dir]}
+			#cp -a CoNVaDING/normalized_coverage_male/*.markDup.normalized.coverage.txt {config[CoNVaDING_ctr_dir]}
 			perl /data/OGL/resources/git/CoNVaDING/CoNVaDING.pl -mode StartWithMatchScore \
 				-inputDir CoNVaDING/normalized_coverage_male \
 				-outputDir  CoNVaDING/MatchScore_male \
@@ -631,7 +628,7 @@ rule CoNVaDING_2:
 		filetest2=$((ls CoNVaDING/normalized_coverage_female/*.markDup.aligned.only.normalized.coverage.txt >> /dev/null 2>&1 && echo TRUE) || echo FALSE)
 		if [ $filetest2 == "TRUE" ];
 		then
-			#cp -a CoNVaDING/normalized_coverage_female/*.markDup.aligned.only.normalized.coverage.txt {config[CoNVaDING_ctr_dir]}
+			#cp -a CoNVaDING/normalized_coverage_female/*.markDup.normalized.coverage.txt {config[CoNVaDING_ctr_dir]}
 			perl /data/OGL/resources/git/CoNVaDING/CoNVaDING.pl -mode StartWithMatchScore \
 				-inputDir CoNVaDING/normalized_coverage_female \
 				-outputDir  CoNVaDING/MatchScore_female \
@@ -647,7 +644,7 @@ rule CoNVaDING_2:
 				-sexChr
 		fi
 		for i in CoNVaDING/CNV_hiSens/*.shortlist.txt; do awk -F "\t" '{{print FILENAME"\t"$0}}' $i >> CoNVaDING/shortlist.temp; done
-		awk -F"\t" 'BEGIN{{OFS="\t"}} {{sub(/CoNVaDING\/CNV_hiSens\//,""); sub(/.markDup.aligned.only.best.score.shortlist.txt/,""); print }}' CoNVaDING/shortlist.temp \
+		awk -F"\t" 'BEGIN{{OFS="\t"}} {{sub(/CoNVaDING\/CNV_hiSens\//,""); sub(/.markDup.best.score.shortlist.txt/,""); print }}' CoNVaDING/shortlist.temp \
 			| grep -v -P 'CHR\tSTART' - > CoNVaDING/SHORTlist.txt && \
 			echo -e "SAMPLE\tCHR\tSTART\tSTOP\tGENE\tNUMBER_OF_TARGETS\tNUMBER_OF_TARGETS_PASS_SHAPIRO-WILK_TEST\tABBERATION" \
 			| cat - CoNVaDING/SHORTlist.txt > CoNVaDING/tmpout && mv CoNVaDING/tmpout CoNVaDING/{config[analysis_batch_name]}.SHORTlist.txt
@@ -675,7 +672,7 @@ rule deepvariant:
 		"""
 		module load {config[deepvariant_version]}
 		PROJECT_WD="$PWD"
-		N_SHARDS="4"
+		N_SHARDS="1"
 		mkdir -p /lscratch/$SLURM_JOB_ID/{wildcards.sample}
 		WORK_DIR=/lscratch/$SLURM_JOB_ID/{wildcards.sample}
 		cp {input} $WORK_DIR
@@ -687,8 +684,7 @@ rule deepvariant:
 			--output_vcf $WORK_DIR/$(basename {output.vcf}) \
 			--output_gvcf $WORK_DIR/$(basename {output.gvcf}) \
 			--sample_name {wildcards.sample} \
-			--intermediate_results_dir $WORK_DIR \
-			--call_variants_extra_args="use_openvino=true"
+			--intermediate_results_dir $WORK_DIR
 		cd $PROJECT_WD
 		cp $WORK_DIR/$(basename {output.vcf})* deepvariant/vcf
 		cp $WORK_DIR/$(basename {output.gvcf})* deepvariant/gvcf

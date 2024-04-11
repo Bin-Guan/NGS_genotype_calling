@@ -4,7 +4,7 @@ ngstype: 'exome' #panel/PANEL, exome (exome/EXOME/wes/WES/es/ES), or genome (gen
 analysis_batch_name: 'batchname' # name for vcf files.
 genomeBuild: 'GRCh38' #GRCh37 (hg19), GRCh38 (hg38), or any other values to use ref_genome and bwa-mem2_ref below.
 ped: '' #Can leave as blank ''. Only for ChrX CNV, has to have ped extenstion, header if present has to starts with #, ie miseq0626_0719.ped
-inputFileType: 'fastq' # single_lane_fastq, fastq, bam or cram (no-realignment, files in old_bam directory), bam-realign, cram-realign (files in old_bam directory).
+inputFileType: 'fastq' # single_lane_fastq, fastq, bam or cram (no-realignment, cannot mix bam with cram, files in old_bam directory), bam-realign, cram-realign (can mix bam & cram; files in old_bam directory).
 eGbed: '/data/OGL/resources/bed/OGLv1.GRCh38.sorted.bed' # bed file is used for coverage of eyeGene
 bed: '/data/OGL/resources/bed/xgenV2_OGLv1.hg38.bed'
 padded_bed: '/data/OGL/resources/bed/xgenV2_OGLv1.500padded.hg38.bed' #for deepvariant variant calling in exome & panel
