@@ -94,7 +94,7 @@ metadata.close()
 # 	currentDT = datetime.datetime.now()
 # 	config['analysis_batch_name'] = currentDT.strftime("%Y%m%d")
 
-if config['inputFileType'].upper() in ['BAM', 'CRAM']:
+if config['inputFileType'].upper() in ['BAM', 'CRAM', 'BAM-REALIGN', 'CRAM-REALIGN']:
 	def rg(wildcards):
 		# returns the read group given in the config['metadata_file']
 		lane_file = str(wildcards)
