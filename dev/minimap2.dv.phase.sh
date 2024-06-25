@@ -8,6 +8,7 @@
 #fastq files have to be SampleID-LW and SampleID-MW. If missing either LW or MW, touch an empty file.
 #--regions: Optional. Space-separated list of regions we want to process. Elements can be region literals (e.g., chr20:10-20) or paths to BED/BEDPE files.
 region=$1
+#ABCA4: chr1:93990834-94123148
 #chr6:35504801-35510825
 set -e
 
@@ -50,7 +51,7 @@ bcftools norm --multiallelics -any --output-type u deepvariant/$sample.dv.vcf.gz
 | bcftools norm -d exact --output-type z -o deepvariant/$sample.dv.filtered.vcf.gz
 tabix -p vcf deepvariant/$sample.dv.filtered.vcf.gz
 whatshap phase --reference /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa \
- deepvariant/$sample.dv.filtered.vcf.gz bam/$sample.bam \
+ --indels deepvariant/$sample.dv.filtered.vcf.gz bam/$sample.bam \
  | bgzip -f > deepvariant/$sample.dv.phased.vcf.gz
 tabix -p vcf deepvariant/$sample.dv.phased.vcf.gz
 rm deepvariant/$sample.dv.filtered.vcf.gz*

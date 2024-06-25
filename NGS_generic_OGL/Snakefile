@@ -1445,6 +1445,7 @@ rule clinsv:
 		refdata_path=/usr/local/apps/clinsv/ref_hg38/clinsv/refdata-b38
 		input_path=$PWD
 		project_folder=$PWD/clinSV/{wildcards.sample}
+		rm -rf $project_folder
 		mkdir -p $project_folder
 		singularity run --bind $refdata_path:/app/ref-data/refdata-b38 \
 			--bind $project_folder:/app/project_folder \
