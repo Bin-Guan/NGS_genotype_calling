@@ -5,7 +5,7 @@
 #SBATCH --time=2:0:0
 
 #~20 min per sample, thus adjust the time accordingly. 
-#fastq files have to be SampleID-LW and SampleID-MW. If missing either LW or MW, touch an empty file.
+#file name: sample_...fastq.gz
 #--regions: Optional. Space-separated list of regions we want to process. Elements can be region literals (e.g., chr20:10-20) or paths to BED/BEDPE files.
 region=$1
 #ABCA4: chr1:93990834-94123148

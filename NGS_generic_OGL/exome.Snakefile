@@ -158,7 +158,7 @@ if config['inputFileType'] == 'single_lane_fastq':
 			cp -p -l {input.bam} {output.bam}
 			cp -p -l {input.bai} {output.bai}
 			"""
-elif config['inputFileType'].upper() in ['BAM', 'CRAM']:
+elif config['inputFileType'].upper() in ['BAM-REALIGN', 'CRAM-REALIGN']:
 	rule realign:
 		input:
 			lambda wildcards: join('old_bam/', str(SAMPLE_LANEFILE[wildcards.sample][0]))
@@ -196,6 +196,52 @@ elif config['inputFileType'].upper() in ['BAM', 'CRAM']:
 					mv {output.bam}.bai {output.bai}
 					;;
 			esac
+			"""
+elif config['inputFileType'].upper() in ['BAM']:
+	localrules: copybam
+	rule copybam:
+		input:
+			lambda wildcards: join('old_bam/', str(SAMPLE_LANEFILE[wildcards.sample][0]))
+		output:
+			bam = 'sample_bam/{sample}.markDup.bam',
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
+		threads: 32
+		resources: res=1
+		shell:
+			"""
+			BAMFILE={input}
+			if [ -e {input}.bai ]; then
+				cp -p -l {input} {output.bam}
+				cp -p -l {input}.bai {output.bai}
+			elif [ -e ${{BAMFILE%.bam}}.bai ]; then
+				cp -p -l {input} {output.bam}
+				cp ${{BAMFILE%.bam}}.bai {output.bai}
+			else
+				if [[ $(module list 2>&1 | grep "sambamba" | wc -l) < 1 ]]; then module load {config[sambamba_version]}; fi
+				cp -p -l {input} {output.bam}
+				sambamba index -t $(({threads}-2)) {output.bam}
+			fi
+			"""
+elif config['inputFileType'].upper() in ['CRAM']:
+	rule cram2bam:
+		input:
+			lambda wildcards: join('old_bam/', str(SAMPLE_LANEFILE[wildcards.sample][0]))
+		output:
+			bam = 'sample_bam/{sample}.markDup.bam',
+			bai = 'sample_bam/{sample}.markDup.bam.bai'
+		threads: 32
+		shell:
+			"""
+			module load {config[samtools_version]}
+			BAMFILE={input}
+			if [ -e {input}.crai ] || [ -e ${{BAMFILE%.cram}}.crai ] ; then
+				echo "index present"
+			else
+				samtools index -@ $(({threads}-2)) {input}
+			fi
+			samtools view -T {config[cram_ref]} -@ $(({threads}-2)) \
+				-b -o {output.bam} {input}
+			samtools index -@ $(({threads}-2)) {output.bam}
 			"""
 else:
 	rule align: # < 10 min, 20g mem, 32 threads for bp exome.
