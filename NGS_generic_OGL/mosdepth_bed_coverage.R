@@ -14,11 +14,22 @@ args <- commandArgs(trailingOnly=TRUE)
 
 readDepth <- fread(args[1], header=T) %>% mutate(targetSize = end - start) 
 #panelGene <- read_tsv(args[2], col_names = TRUE, col_types = cols(.default = col_character())) %>% select(gene, panel_class)
-panelGene <- read_xlsx(args[2], sheet = "analysis", na = c("NA", "", "None", ".")) %>% select(gene, panel_class)
+panelGene <- read_xlsx(args[2], sheet = "analysis", na = c("NA", "", "None", ".")) %>%
+  select(gene, panel_class) %>% 
+  mutate(panel_class = case_when(panel_class == "Dx" ~ "Dx",
+                                 panel_class == "Candidate-High" ~ "Candidate",
+                                 panel_class == "Candidate-refutedDxGene" ~ "Candidate",
+                                 panel_class == "Candidate" ~ "Candidate",
+                                 panel_class == "Dx-modifier-rare" ~ "Other",
+                                 panel_class == "Dx-modifier-common" ~ "Other",
+                                 TRUE ~ "Other"))
+
 region_summary <- fread(args[3], header=T)
 
 RDtype <- left_join(readDepth, panelGene, by = c("gene")) %>% replace_na(list(panel_class="Other"))
-RDtype$panel_class = factor(RDtype$panel_class, levels = c("Dx", "Candidate", "Other"))
+RDtype$panel_class = factor(RDtype$panel_class, levels = c("Dx",
+                                                           "Candidate",
+                                                           "Other"))
 
 totalRegion <- RDtype %>% group_by(panel_class) %>% summarise(totalRegionSum = sum(targetSize))
 coverageTen <- RDtype %>% group_by(panel_class) %>% summarise(coverageTenSum = sum(coverageTen)) %>% select(coverageTenSum)

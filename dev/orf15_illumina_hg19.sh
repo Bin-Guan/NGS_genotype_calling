@@ -8,14 +8,14 @@ module load clair3/1.0.10 annovar/2020-06-08
 
 mkdir -p clair3 clairAnnotation
 
-for file in bam/*.bam; do
+for file in old_bam/*.bam; do
 sample=$(basename $file | sed "s/.bam//")
 clair3 \
-  --bam_fn=bam/$sample.bam \
-  --ref_fn=/data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa \
+  --bam_fn=old_bam/$sample.bam \
+  --ref_fn=/data/OGL/resources/1000G_phase2_GRCh37/human_g1k_v37_decoy.fasta \
   --threads=8 \
   --platform=ilmn \
-  --bed_fn=/data/OGL/resources/bed/RPGR_ORF15.bed \
+  --bed_fn=/data/OGL/resources/bed/RPGR_ORF15_hg19.bed \
   --model_path=/data/OGL/resources/clair3/ilmn \
   --ref_pct_full=1.0 --var_pct_full=0.5 \
   --chunk_size=-1 \
@@ -23,7 +23,7 @@ clair3 \
 cp /lscratch/$SLURM_JOB_ID/merge_output.vcf.gz clair3/$sample.vcf.gz
 cp /lscratch/$SLURM_JOB_ID/merge_output.vcf.gz.tbi clair3/$sample.vcf.gz.tbi
 convert2annovar.pl -format vcf4old clair3/$sample.vcf.gz -includeinfo --outfile clairAnnotation/$sample.avinput
-ver=hg38
+ver=hg19
 table_annovar.pl clairAnnotation/$sample.avinput \
 $ANNOVAR_DATA/$ver \
 -buildver $ver \

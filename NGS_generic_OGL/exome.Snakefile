@@ -217,7 +217,7 @@ elif config['inputFileType'].upper() in ['BAM']:
 				cp -p -l {input} {output.bam}
 				cp ${{BAMFILE%.bam}}.bai {output.bai}
 			else
-				if [[ $(module list 2>&1 | grep "sambamba" | wc -l) < 1 ]]; then module load {config[sambamba_version]}; fi
+				if [[ $(module list 2>&1 | grep "sambamba" | wc -l) -lt 1 ]]; then module load {config[sambamba_version]}; fi
 				cp -p -l {input} {output.bam}
 				sambamba index -t $(({threads}-2)) {output.bam}
 			fi
@@ -439,8 +439,8 @@ rule coverage:
 	threads: 8
 	shell:
 		"""
-		if [[ $(module list 2>&1 | grep "mosdepth" | wc -l) < 1 ]]; then module load {config[mosdepth_version]}; fi
-		if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
+		if [[ $(module list 2>&1 | grep "mosdepth" | wc -l) -lt 1 ]]; then module load {config[mosdepth_version]}; fi
+		if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		cd coverage/mosdepth
 		mosdepth -t {threads} --no-per-base --by {config[bed]} --mapq 0 --fast-mode --thresholds 10,20,30 \
 			{wildcards.sample}.md ../../{input.bam}
@@ -551,14 +551,14 @@ rule scramble_annotation:
 	resources: res=1
 	shell:
 		"""
-		if [[ $(module list 2>&1 | grep "annovar" | wc -l) < 1 ]]; then module load {config[annovar_version]}; fi
-		if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
+		if [[ $(module list 2>&1 | grep "annovar" | wc -l) -lt 1 ]]; then module load {config[annovar_version]}; fi
+		if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		if [[ {config[genomeBuild]} == "GRCh38" ]]; then
 			ver=hg38
 		else
 			ver=hg19
 		fi
-		if [[ $(wc -l {input.mei} | cut -d " " -f 1) == 1 ]]
+		if [[ $(wc -l {input.mei} | cut -d " " -f 1) -eq 1 ]]
 		then
 			touch {output.avinput}
 			touch {output.annovarR}
@@ -580,11 +580,11 @@ rule scramble_annotation:
 			rm scramble_anno/{wildcards.sample}."$ver"_multianno.txt
 			Rscript /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/scramble_anno.R {output.annovarR} {config[SCRAMBLEdb]} {config[OGL_Dx_research_genes]} {config[HGMDtranscript]} {wildcards.sample} {output.anno} {output.anno_xlsx}
 		fi
-		if [[ $(wc -l {input.deletion} | cut -d " " -f 1) == 1 ]]
+		if [[ $(wc -l {input.deletion} | cut -d " " -f 1) -eq 1 ]]
 		then
 			touch {output.del_anno}
 		else
-			if [[ $(module list 2>&1 | grep "annotsv" | wc -l) < 1 ]]; then module load {config[annotsv_version]}; fi
+			if [[ $(module list 2>&1 | grep "annotsv" | wc -l) -lt 1 ]]; then module load {config[annotsv_version]}; fi
 			tail -n +2 {input.deletion} | awk -F"\t" 'BEGIN{{OFS="\t"}} {{print $1,$2,$3,"DEL"}}' > {input.deletion}.bed
 			AnnotSV -genomeBuild {config[genomeBuild]} -SVinputFile {input.deletion}.bed -SVinputInfo 0 -svtBEDcol 4 -outputFile {output.del_anno}.temp
 			Rscript /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/scramble_del_edit.R {output.del_anno}.temp.tsv {config[scrambleDELdb]} {output.del_anno}
@@ -652,9 +652,9 @@ rule automap_roh:
 		annotated = 'AutoMap/{sample}/{sample}.HomRegions.annot.tsv'
 	shell:
 		"""
-		if [[ $(module list 2>&1 | grep "samtools" | wc -l) < 1 ]]; then module load {config[samtools_version]}; fi
-		if [[ $(module list 2>&1 | grep "bedtools" | wc -l) < 1 ]]; then module load {config[bedtools_version]}; fi
-		if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "bedtools" | wc -l) -lt 1 ]]; then module load {config[bedtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		if [[ {config[genomeBuild]} == "GRCh38" ]]; then
 			ver=hg38
 		else
@@ -667,7 +667,7 @@ rule automap_roh:
 			--out AutoMap --genome $ver --chrX \
 			--minsize 1 --minvar 20
 		echo "AutoMap1.2 done"
-		if [[ $(grep -v ^# {output.tsv} | wc -l) == 0 ]]; then
+		if [[ $(grep -v ^# {output.tsv} | wc -l) -eq 0 ]]; then
 			touch {output.bed}
 			touch {output.annotated}
 			echo "no ROH region detected."
@@ -858,7 +858,7 @@ rule merge_glnexus_phased_vcf:
 	threads: 8
 	shell:
 		"""
-		if [[ $(module list 2>&1 | grep "samtools" | wc -l) < 1 ]]; then module load {config[samtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
 		case "{input.vcf}" in
 			*\ *)
 				bcftools merge --merge none --output-type z --threads {threads} {input.vcf} \
@@ -885,7 +885,7 @@ rule merge_dv_fb_vcfs:
 	threads: 8
 	shell:
 		"""
-		if [[ $(module list 2>&1 | grep "samtools" | wc -l) < 1 ]]; then module load {config[samtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
 		WORK_DIR=/lscratch/$SLURM_JOB_ID
 		bcftools isec -p $WORK_DIR/dv -w 2 --collapse none --output-type u --threads {threads} \
 			deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz \
@@ -1011,18 +1011,18 @@ rule bcm_locus:
 		| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t $(({threads}/2)) -o {output.bam} \
 			<(sambamba view -S -f bam -l 0 -t $(({threads}/2)) /dev/stdin)
 		mv {output.bam}.bai {output.bai}
-		if [[ $(module list 2>&1 | grep "mosdepth" | wc -l) < 1 ]]; then module load {config[mosdepth_version]}; fi
-		if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
+		if [[ $(module list 2>&1 | grep "mosdepth" | wc -l) -lt 1 ]]; then module load {config[mosdepth_version]}; fi
+		if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		mkdir -p bcmlocus/mosdepth
 		cd bcmlocus/mosdepth
 		mosdepth -t {threads} --no-per-base --by {config[bcmlocus_bed]}  --use-median --mapq 0 --fast-mode \
 			{wildcards.sample}.md ../../{output.bam}
 		cd ../..
-		if [[ $(module list 2>&1 | grep "samtools" | wc -l) < 1 ]]; then module load {config[samtools_version]}; fi
-		if [[ $(module list 2>&1 | grep "freebayes" | wc -l) < 1 ]]; then module load {config[freebayes_version]}; fi
-		if [[ $(module list 2>&1 | grep "annovar" | wc -l) < 1 ]]; then module load {config[annovar_version]}; fi
-		if [[ $(module list 2>&1 | grep "vcflib" | wc -l) < 1 ]]; then module load {config[vcflib_version]}; fi
-		if [[ $(module list 2>&1 | grep "vt/" | wc -l) < 1 ]]; then module load {config[vt_version]}; fi
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "freebayes" | wc -l) -lt 1 ]]; then module load {config[freebayes_version]}; fi
+		if [[ $(module list 2>&1 | grep "annovar" | wc -l) -lt 1 ]]; then module load {config[annovar_version]}; fi
+		if [[ $(module list 2>&1 | grep "vcflib" | wc -l) -lt 1 ]]; then module load {config[vcflib_version]}; fi
+		if [[ $(module list 2>&1 | grep "vt/" | wc -l) -lt 1 ]]; then module load {config[vt_version]}; fi
 		freebayes -f {config[GRCh38Decoy2]} --max-complex-gap 80 -p 10 -C 3 -F 0.05 \
 			--genotype-qualities --strict-vcf --use-mapping-quality \
 			--targets /data/OGL/resources/bed/OPN1LWe2e5.bed \
@@ -1068,7 +1068,7 @@ rule bcm_locus:
 				--thread 1 \
 				--otherinfo
 			sed -i "1 s/Otherinfo1\tOtherinfo2\tOtherinfo3\tOtherinfo4\tOtherinfo5\tOtherinfo6\tOtherinfo7\tOtherinfo8\tOtherinfo9\tOtherinfo10/CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tGT_FIELDS/" bcmlocus/{wildcards.sample}.avinput."$ver"_multianno.txt
-			if [[ $(module list 2>&1 | grep "R/" | wc -l) < 1 ]]; then module load {config[R_version]}; fi
+			if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 			Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/bcmlocus.R \
 				/data/OGL/resources/bcmlocus.xlsx \
 				{wildcards.sample} bcmlocus/{wildcards.sample}.avinput."$ver"_multianno.txt {output.bcm_out} {output.bcm_out}.xlsx
@@ -1369,7 +1369,7 @@ rule picard_merge_gvcfs:
 	threads: 2
 	shell:
 		"""
-		if [[ $(module list 2>&1 | grep "picard" | wc -l) < 1 ]]; then module load {config[picard_version]}; fi
+		if [[ $(module list 2>&1 | grep "picard" | wc -l) -lt 1 ]]; then module load {config[picard_version]}; fi
 		cat_inputs_i=""
 		for gvcf in {input}; do
 			cat_inputs_i+="I=$gvcf "; done

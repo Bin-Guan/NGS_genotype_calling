@@ -17,7 +17,8 @@ echo "NGS_genotype_calling.git.date: '$(cat /data/OGL/resources/NGS_genotype_cal
 #git log | head -n 5 > /data/OGL/resources/NGS_genotype_calling.git.log
 
 mkdir -p 00log
-module load snakemake/7.19.1 || exit 1
+module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exit 1
+#snakemake/7.19.1 1/3/2025 updated this to config_generic.yaml
 #snakemake/6.8.2 act a little bit weird. Line no. is Snakefile messed up. 3/1/2022
 #previous version 6.0.5 Aug 2023
 
@@ -92,7 +93,7 @@ case "${ngstype^^}" in
 		-pr --local-cores 2 --jobs 1999 \
 		--cluster-config /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/cluster.json \
 		--cluster "$sbcmd"  --latency-wait 120 --rerun-incomplete \
-		-k --restart-times 2 \
+		-k --restart-times 0 \
 		--resources res=1 \
 		--configfile $@
 		;;

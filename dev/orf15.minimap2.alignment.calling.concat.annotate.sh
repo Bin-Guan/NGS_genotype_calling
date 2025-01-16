@@ -39,7 +39,7 @@ else
 	done
 fi
 #rm -r filteredFastq
-module load clair3/1.0.4 deepvariant/1.6.0 samtools/1.19 vcflib/1.0.3 annovar/2020-06-08 R/4.3.0
+module load clair3/1.0.10 deepvariant/1.6.0 samtools/1.19 vcflib/1.0.3 annovar/2020-06-08 R/4.3.0
 
 mkdir -p deepvariant clair3 vcf annotation
 
@@ -50,7 +50,7 @@ while read -r sample; do
 		--reads bam/$sample.bam \
 		--output_vcf deepvariant/$sample.dv.vcf.gz \
 		--sample_name $sample \
-		--intermediate_results_dir $WORK_DIR/$sample
+		--intermediate_results_dir $WORK_DIR/dv/$sample
 	vcffilter -f "QUAL > 0" deepvariant/$sample.dv.vcf.gz \
 		| bcftools norm --check-ref s --fasta-ref /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa --output-type u --no-version - \
 		| bcftools annotate --set-id 'dv_%CHROM\:%POS%REF\>%ALT' -x FORMAT/PL --output-type z -o deepvariant/$sample.dv.filtered.vcf.gz
@@ -62,23 +62,22 @@ while read -r sample; do
 		--bed_fn=/data/OGL/resources/bed/RPGR_ORF15.bed \
 		--model_path=/data/OGL/resources/clair3/ont_r1041/r1041_e82_400bps_sup_v420 \
 		--sample_name=$sample \
-		--output=$WORK_DIR/$sample 
-	#Will false negative increase if setting minimum read = 1 instead of 2 as in the default???
-	cp $WORK_DIR/$sample/merge_output.vcf.gz clair3/$sample.vcf.gz
-	cp $WORK_DIR/$sample/merge_output.vcf.gz.tbi clair3/$sample.vcf.gz.tbi
+		--ref_pct_full=1.0 --var_pct_full=0.5 \
+		--chunk_size=-1 \
+		--output=$WORK_DIR/clair3/$sample 
+	###--ctg_name=chrX \ ## --bed_fn=/data/OGL/resources/bed/RPGR_ORF15.bed 
+	##	--var_pct_full=1.0 \ --ref_pct_full=1.0 \
+	##Will false negative increase if setting minimum read = 1 instead of 2 as in the default??? ##added var_pct_full & ref_pcf_full 8/6/24
+	cp $WORK_DIR/clair3/$sample/merge_output.vcf.gz clair3/$sample.vcf.gz
+	cp $WORK_DIR/clair3/$sample/merge_output.vcf.gz.tbi clair3/$sample.vcf.gz.tbi
 	bcftools norm --check-ref s --fasta-ref /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa --output-type u --no-version clair3/$sample.vcf.gz \
 		| bcftools annotate --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --output-type z -o clair3/$sample.norm.vcf.gz
 	tabix -p vcf clair3/$sample.norm.vcf.gz
-	bcftools isec --threads 1 -p $WORK_DIR --collapse none -Oz \
-		clair3/$sample.norm.vcf.gz \
-		deepvariant/$sample.dv.filtered.vcf.gz
-	zcat $WORK_DIR/0002.vcf.gz | sed 's/\tclr/\tclrDv/' | bgzip -@ 1 > $WORK_DIR/$sample.clrDv.vcf.gz
-	tabix -p vcf $WORK_DIR/$sample.clrDv.vcf.gz
-	bcftools concat --threads 1 -a --rm-dups none --no-version \
-		$WORK_DIR/$sample.clrDv.vcf.gz $WORK_DIR/0000.vcf.gz $WORK_DIR/0001.vcf.gz -Oz \
+	bcftools concat --threads 1 -a --no-version \
+		clair3/$sample.norm.vcf.gz deepvariant/$sample.dv.filtered.vcf.gz -Oz \
 		-o vcf/$sample.clair.dv.vcf.gz
 	tabix -p vcf vcf/$sample.clair.dv.vcf.gz
-	rm $WORK_DIR/*.*
+	rm -rf $WORK_DIR/*
 	convert2annovar.pl -format vcf4old vcf/$sample.clair.dv.vcf.gz -includeinfo --outfile annotation/$sample.avinput
 	ver=hg38
 	table_annovar.pl annotation/$sample.avinput \

@@ -63,9 +63,14 @@
 	"clinsv" :
 	{
 		"partition" : "norm",
-		"extra" : "--gres=lscratch:100",
+		"extra" : "--gres=lscratch:150",
 		"time" : "16:00:00",
 		"mem" : "64g"
+	},
+	"orf15" :
+	{
+		"partition" : "norm,quick",
+		"time" : "1:00:00"
 	},
 	"cram2bam" :
 	{
@@ -136,7 +141,7 @@
 		"time" : "4:00:00",
 		"mem" : "100g",
 		"threads" : "56",
-		"extra" : "--gres=lscratch:400"
+		"extra" : "--gres=lscratch:600"
 	},
 	"realign" :
 	{
@@ -150,7 +155,7 @@
 		"partition" : "norm",
 		"time" : "5:00:00",
 		"mem" : "100g",
-		"extra" : "--gres=lscratch:400"
+		"extra" : "--gres=lscratch:500"
 	},
 	"manta" :
 	{

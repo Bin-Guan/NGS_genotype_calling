@@ -70,7 +70,13 @@ chromosome_name <- c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","ch
 
 annoted1 <- left_join(annoted, panelGene, by = c("Gene" = "gene")) %>%
   replace_na(list(panel_class = "Other")) %>% 
-  mutate(eyeGene = ifelse(panel_class %in% c("Dx", "Candidate"), 1, 0)) %>% 
+  mutate(eyeGene = case_when(panel_class == "Dx" ~ 9,
+                             panel_class == "Candidate-High" ~ 8,
+                             panel_class == "Candidate-refutedDxGene" ~ 7,
+                             panel_class == "Candidate" ~ 6,
+                             panel_class == "Dx-modifier-rare" ~ 3,
+                             panel_class == "Dx-modifier-common" ~ 2,
+                             TRUE ~ 0)) %>% 
   mutate(Clipped_Reads_In_Cluster = as.integer(Clipped_Reads_In_Cluster)) %>% 
   select(variant, Insertion, temp_variantID, MEI_Family, Insertion_Direction, Clipped_Reads_In_Cluster, Alignment_Score, 
          Alignment_Percent_Length, Alignment_Percent_Identity, Clipped_Sequence, Clipped_Side, Start_In_MEI, Stop_In_MEI, 
