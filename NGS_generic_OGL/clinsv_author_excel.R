@@ -1,9 +1,9 @@
 args <- commandArgs(trailingOnly=TRUE)
 
-# args <- c("Z:/resources/OGLpanelGeneDxORcandidate.xlsx",
-#           "Z:/development/genome/clinSV/D1596_1/results/D1596_1.RARE_PASS_GENE.xlsx",
-#           "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.tsv",
-#           "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.filtered.xlsx")
+args <- c("Z:/resources/OGLpanelGeneDxORcandidate.xlsx",
+          "Z:/genome/RodYoung/clinSV/RY1.clinSV.RARE_PASS_GENE.annotated.tsv",
+          "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.tsv",
+          "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.filtered.xlsx")
 
 geneCategory_file <- args[1]
 heavy_file <- args[2]
@@ -13,7 +13,9 @@ edited_xlsx_file <- args[4]
 library(tidyverse)
 library(readxl)
 
-eyeGeneList <- read_xlsx(geneCategory_file, sheet = "analysis", na = c("NA", "", "None", ".")) %>% select(gene, panel_class) %>% pull(gene)
+eyeGeneList <- read_xlsx(geneCategory_file, sheet = "analysis", na = c("NA", "", "None", ".")) %>% 
+  select(gene) %>% distinct() %>% 
+  pull(gene)
 
 heavy <- read_xlsx(heavy_file, sheet = "Sheet1", 
                    col_names = c("Sample", "VariantID", "Filter", "isRare", "SU",

@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH -c8
-#SBATCH --mem=64g
+#SBATCH --mem=16g
 #SBATCH --partition=gpu
 #SBATCH --gres=lscratch:50,gpu:1 --constraint='gpuv100|gpua100|gpuv100x'
-#SBATCH --time=4:0:0
+#SBATCH --time=5:0:0
 
 #dorado works on fast5 files as well.
 #copy data exactly as pod5_pass/barcode01 etc.
 #save rename.sh using info from the excel template to rename the files. The rename.sh should be under the project folder.
-#took 4-10 minutes for batch3 rerun
+#took 4-10 minutes for batch3 rerun (5 pod5 files), similarly to batch 4 (4h25min) which run longer and had 38 pod5 files. Thus, increase time to 5 hours. 
 
 
 module load dorado/0.8.1

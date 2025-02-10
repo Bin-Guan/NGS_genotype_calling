@@ -10,8 +10,8 @@
 #fastq files have to be SampleID-LW and SampleID-MW. If missing either LW or MW, touch an empty file.
 
 set -e
-library=$1
-batchname=$(date '+%Y%m%d_%H%M') #QBplEx or OGL; will be part of @RG
+library=$1 #QBplEx or OGL; will be part of @RG
+batchname=$(date '+%Y%m%d_%H%M') 
 WORK_DIR=/lscratch/$SLURM_JOB_ID
 
 module load porechop minimap2/2.26 sambamba/0.8.2 mosdepth
@@ -81,7 +81,7 @@ mkdir -p freebayes deepvariant vcf annotation
 #changed -C 5 to 3 to account for low coverage Plasmid Express reads.
 while read -r sample;
 do
-coverage=$(grep $sample coverage.summary.tsv | cut -f 5)
+coverage=$(grep $sample $batchname.coverage.summary.tsv | cut -f 5)
 echo $coverage
 if (( $coverage > 3 )); then
 freebayes -f /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa --max-complex-gap 80 -p 10 -C 3 -F 0.05 \
@@ -144,7 +144,7 @@ module load clair3/1.0.10
 mkdir -p deepvariant clair3 vcf annotation
 
 while read -r sample; do
-coverage=$(grep $sample coverage.summary.tsv | cut -f 2)
+coverage=$(grep $sample $batchname.coverage.summary.tsv | cut -f 2)
 echo $coverage
 if (( $coverage > 3 )); then
 run_deepvariant --model_type ONT_R104 --num_shards 1 \
@@ -202,7 +202,8 @@ fi
 done < manifest.csv
 
 #clean up directory
-rm -r fastq pod5_pass porechop
+#rm -r fastq pod5_pass porechop
+rm -rf fastq porechop
 
 ##clair3 didn't call some SNP, even with the last line of --var_pct_full=1 --ref_pct_full=1 --var_pct_phasing=1
 # mkdir -p clair3/$sample

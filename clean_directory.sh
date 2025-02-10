@@ -4,6 +4,12 @@
 #SBATCH --mem=8g
 #SBATCH --time=2:00:00
 
+module load R/4.3.0
+
+calling_configure_file=$1
+variantPrioritization_configure_file=$2
+TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
+
 rm -rf coverage/mean.coverage.done.txt
 rm -rf bcmlocus/combine.bcmlocus.done.txt
 rm -rf orf15/combine.orf15.done.txt
@@ -14,3 +20,67 @@ rm -rf .snakemake
 rm -rf 00log
 rm -rf slurm*.out
 rm -rf sample_bam old_bam
+rm -rf prioritization/slurm*.out
+rm -rf prioritization/.snakemake
+rm -rf prioritization/00log
+rm -rf prioritization/madeline/madeline.done
+echo "File deletion task done"
+analysis_batch_name=$(grep "^analysis_batch_name:" $1 | head -n 1 | cut -d"'" -f 2)
+ngstype=$(grep "^datatype:" $2 | head -n 1 | cut -d"'" -f 2)
+ped_file=$(grep "^ped:" $2 | head -n 1 | cut -d"'" -f 2)
+#copy sample names to OGL.ped with the last column as analysis_batch_name
+#first batch adding column names: awk -F"\t" -v batch="$analysis_batch_name" -v dt="$datatype" 'BEGIN{OFS="\t"} NR==1 {print $0, "batch", "data_type"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
+#subsequent batch
+awk -F"\t" -v batch="$analysis_batch_name" -v dt="$ngstype" 'BEGIN{OFS="\t"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
+chgrp OGL /data/OGL/resources/OGLsample/OGL.ped
+
+# case "${ngstype^^}" in
+	# "PANEL")
+		# snakemake -s /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/panel.Snakefile \
+		# -pr --local-cores 2 --jobs 1999 \
+		# --cluster-config /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/panel.cluster.json \
+		# --cluster "$sbcmd"  --latency-wait 120 --rerun-incomplete \
+		# -k --restart-times 1 \
+		# --resources res=1 \
+		# --configfile $@
+		# ;;
+	# "AMPLICON"|"AMP")
+		# snakemake -s /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/amplicon.Snakefile \
+		# -pr --local-cores 2 --jobs 1999 \
+		# --cluster-config /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/panel.cluster.json \
+		# --cluster "$sbcmd"  --latency-wait 120 --rerun-incomplete \
+		# -k --restart-times 1 \
+		# --resources res=1 \
+		# --configfile $@
+		# ;;
+	# "EXOME"|"WES"|"ES")
+		# snakemake -s /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/exome.Snakefile \
+		# -pr --local-cores 2 --jobs 1999 \
+		# --cluster-config /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/exome.cluster.json \
+		# --cluster "$sbcmd"  --latency-wait 120 --rerun-incomplete \
+		# -k --restart-times 1 \
+		# --resources res=1 \
+		# --configfile $@
+		# ;;
+	# *)
+		# snakemake -s /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/Snakefile \
+		# -pr --local-cores 2 --jobs 1999 \
+		# --cluster-config /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/cluster.json \
+		# --cluster "$sbcmd"  --latency-wait 120 --rerun-incomplete \
+		# -k --restart-times 0 \
+		# --resources res=1 \
+		# --configfile $@
+		# ;;
+# esac
+
+
+#copy index case files to resources and change group ownership to OGL
+#make indexSample files
+
+# Rscript ~/git/variant_prioritization/dev/pick_affected_index_sample_from_ped_columnName.R prioritization/$ped_file /data/OGL/resources/OGLsample/OGL.indexSample.$TIMESTAMP.ped $datatype.$analysis_batch_name.indexSample.tsv
+
+# tail -n 2+ /data/OGL/resources/OGLsample/OGL.indexSample.$TIMESTAMP.ped >> /data/OGL/resources/OGLsample/OGL.indexSample.ped
+
+#some scripts are in Z:\resources\OGLsample
+#Steps: remove duplicated samples and others "special cases", copy vcf files and SV tsv files to resources, merge samples in another scripts etc. These special cases can be in a file.
+#test later.

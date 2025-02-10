@@ -151,7 +151,7 @@ rule dummy:
 	input:
 		config['metadata_file']
 	output:
-		'dummy.txt'
+		temp('dummy.txt')
 	shell:
 		"""
 		touch {output}
@@ -1504,7 +1504,8 @@ rule clinsv:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		vcf = 'clinSV/{sample}.clinsv.SV-CNV.vcf.gz'
+		vcf = 'clinSV/{sample}.clinsv.SV-CNV.vcf.gz',
+		clinSV_Dir = temp(directory('clinSV/{sample}'))
 	threads: 24
 	shell:
 		"""
@@ -1552,7 +1553,7 @@ rule clinsv:
 		if [ ! -e clinSV/result_description.docx ];	then
 			cp clinSV/{wildcards.sample}/results/result_description.docx clinSV/result_description.docx
 		fi
-		rm -rf clinSV/{wildcards.sample}
+		#rm -rf clinSV/{wildcards.sample}
 		"""
 
 #sort necessary before mark_dup? it was sorted during the merge lane_bam step.
