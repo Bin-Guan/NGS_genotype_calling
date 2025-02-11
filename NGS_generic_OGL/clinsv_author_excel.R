@@ -1,9 +1,9 @@
 args <- commandArgs(trailingOnly=TRUE)
 
-args <- c("Z:/resources/OGLpanelGeneDxORcandidate.xlsx",
-          "Z:/genome/RodYoung/clinSV/RY1.clinSV.RARE_PASS_GENE.annotated.tsv",
-          "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.tsv",
-          "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.filtered.xlsx")
+# args <- c("Z:/resources/OGLpanelGeneDxORcandidate.xlsx",
+#           "Z:/genome/RodYoung/clinSV/RY1.clinSV.RARE_PASS_GENE.annotated.tsv",
+#           "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.tsv",
+#           "Z:/development/genome/clinSV/D1596_1.RARE_PASS_GENE.eG.filtered.xlsx")
 
 geneCategory_file <- args[1]
 heavy_file <- args[2]
@@ -29,7 +29,7 @@ heavy <- read_xlsx(heavy_file, sheet = "Sheet1",
 selectEyeGene <- function(x){
   x = as.character(x)
   geneNames <- as.list(strsplit(x, ","))[[1]] 
-  if (length(geneNames) > 1) {
+  if (length(geneNames) > 0) {
     eyeGene <- purrr::keep(geneNames, geneNames %in% eyeGeneList) 
     if (length(eyeGene) == 0) {
       return(NA)

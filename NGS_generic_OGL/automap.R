@@ -25,7 +25,7 @@ eyeGeneList <- read_xlsx(geneCategory_file, sheet = "analysis", na = c("NA", "",
 selectEyeGene <- function(x){
   x = as.character(x)
   geneNames <- as.list(strsplit(x, ";"))[[1]] 
-  if (length(geneNames) > 1) {
+  if (length(geneNames) > 0) {
     eyeGene <- purrr::keep(geneNames, geneNames %in% eyeGeneList) 
     if (length(eyeGene) == 0) {
       return(NA)
