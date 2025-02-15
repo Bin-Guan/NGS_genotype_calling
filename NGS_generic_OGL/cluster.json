@@ -34,9 +34,9 @@
 	{
 		"partition" : "norm",
 		"extra" : "--gres=lscratch:200",
-		"time" : "6:00:00",
+		"time" : "12:00:00",
 		"threads" : "26",
-		"mem" : "96g"
+		"mem" : "200g"
 	},
 	"glnexus" :
 	{
@@ -54,17 +54,17 @@
 	},
 	"jaxcnv" :
 	{
-		"partition" : "norm,quick",
+		"partition" : "norm",
 		"extra" : "--gres=lscratch:100",
-		"time" : "1:00:00",
+		"time" : "8:00:00",
 		"threads" : "8",
 		"mem" : "64g"
 	},
 	"clinsv" :
 	{
 		"partition" : "norm",
-		"extra" : "--gres=lscratch:150",
-		"time" : "16:00:00",
+		"extra" : "--gres=lscratch:200",
+		"time" : "36:00:00",
 		"mem" : "64g"
 	},
 	"orf15" :
@@ -137,11 +137,11 @@
 	},
 	"align_markdup" :
 	{
-		"partition" : "norm,quick",
-		"time" : "4:00:00",
+		"partition" : "norm",
+		"time" : "8:00:00",
 		"mem" : "100g",
 		"threads" : "56",
-		"extra" : "--gres=lscratch:600"
+		"extra" : "--gres=lscratch:1000"
 	},
 	"realign" :
 	{
@@ -159,15 +159,16 @@
 	},
 	"manta" :
 	{
-		"partition" : "quick,norm",
-		"time" : "4:00:00",
+		"partition" : "norm",
+		"time" : "16:00:00",
 		"mem" : "32g",
 		"extra" : "--gres=lscratch:50"
 	},
 	"scramble" :
 	{
 		"partition" : "norm",
-		"time" : "8:00:00"
+		"mem" : "32g",
+		"time" : "16:00:00"
 	},
 	"scramble_annotation" :
 	{
@@ -210,7 +211,7 @@
 	"picard_alignmentQC" :
 	{
 		"partition" : "norm",
-		"time" : "10:00:00",
+		"time" : "16:00:00",
 		"mem" : "32g",
 		"extra" : "--gres=lscratch:20"
 	},

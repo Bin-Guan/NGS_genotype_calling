@@ -110,7 +110,7 @@ rule all:
 		expand('manta/manta.{sample}.annotated.tsv', sample=list(SAMPLE_LANEFILE.keys())),
 		expand('scramble_anno/{sample}.scramble.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['SCRAMble'] == 'TRUE' else 'dummy.txt',
 		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())),
-		'bcmlocus/combine.bcmlocus.done.txt'
+		'bcmlocus/combine.bcmlocus.done.txt' if config['bcmlocus'] == 'TRUE' else 'dummy.txt'
 
 
 localrules: dummy
