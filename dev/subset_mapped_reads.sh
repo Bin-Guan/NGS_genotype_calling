@@ -6,6 +6,6 @@
 
 input=$1
 output=$2
-module load samtool/1.13
+module load samtools/1.21
 samtools view --threads $SLURM_CPUS_PER_TASK -b -F 0x4 --output $output $input
 samtools index -@ $SLURM_CPUS_PER_TASK $output

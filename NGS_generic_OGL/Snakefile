@@ -551,7 +551,7 @@ rule bam_to_cram:
 		cram = 'cram/{sample}.cram',
 		crai = 'cram/{sample}.crai'
 	threads:
-		8
+		16
 	shell:
 		"""
 		module load {config[samtools_version]}

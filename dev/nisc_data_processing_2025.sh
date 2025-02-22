@@ -6,9 +6,8 @@
 
 #Create a project folder, then globus transfer data to the project folder such as eyeGENE_ORF15
 #run outside the project folder
-
-TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
 ProjectDir=$1
+TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
 mkdir -p $ProjectDir-$TIMESTAMP/old_bam $ProjectDir-$TIMESTAMP/vcf_nisc/gvcf $ProjectDir-$TIMESTAMP/vcf_nisc/vcf
 
 module load samtools
