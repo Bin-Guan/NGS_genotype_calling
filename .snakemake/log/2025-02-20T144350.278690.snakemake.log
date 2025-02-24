@@ -1,3 +1,0 @@
-Building DAG of jobs...
-IOFileException in file /home/guanb/git/NGS_genotype_calling/NGS_generic_OGL/Snakefile, line 546:
-nothing to repeat at position 16 in wildcard statement
