@@ -99,8 +99,8 @@ esac
 
 
 WORK_DIR=$PWD
-echo "NGS_genotype_calling.git.version.in.OGL_resources: '$(tail -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
-echo "NGS_genotype_calling.git.version.in.OGL_resources.date: '$(cat NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
+echo "NGS_genotype_calling.git.in.OGL_resources: '$(head -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
+echo "NGS_genotype_calling.git.in.OGL_resources.date: '$(cat /data/OGL/resources/NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
 cd ~/git/NGS_genotype_calling
 git log | head -n 5 > $WORK_DIR/NGS_genotype_calling.git.log
 cd $WORK_DIR

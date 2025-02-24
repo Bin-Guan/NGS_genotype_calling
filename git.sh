@@ -1,5 +1,5 @@
 #!/bin/bash
-#$1 version
+#$1 version on GitHub, the git tag command does not match with GitHub.com??
 #$2 message, quotation mark for sentence
 echo $1 "$2"
 git add --all

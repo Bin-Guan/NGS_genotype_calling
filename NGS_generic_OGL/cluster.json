@@ -36,7 +36,7 @@
 		"extra" : "--gres=lscratch:200",
 		"time" : "6:00:00",
 		"threads" : "26",
-		"mem" : "96g"
+		"mem" : "120g"
 	},
 	"glnexus" :
 	{
@@ -55,16 +55,15 @@
 	"jaxcnv" :
 	{
 		"partition" : "norm,quick",
-		"extra" : "--gres=lscratch:100",
-		"time" : "1:00:00",
-		"threads" : "8",
+		"extra" : "--gres=lscratch:150",
+		"time" : "1:30:00",
 		"mem" : "64g"
 	},
 	"clinsv" :
 	{
 		"partition" : "norm",
-		"extra" : "--gres=lscratch:150",
-		"time" : "32:00:00",
+		"extra" : "--gres=lscratch:200",
+		"time" : "36:00:00",
 		"mem" : "64g"
 	},
 	"orf15" :

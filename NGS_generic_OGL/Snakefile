@@ -143,7 +143,7 @@ rule all:
 		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['freebayes_phasing'] == 'TRUE' else 'deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt',
 		'bcmlocus/combine.bcmlocus.done.txt' if config['bcmlocus'] == 'TRUE' else 'dummy.txt',
 		expand('jax-cnv/{sample}.merge.bed', sample=list(SAMPLE_LANEFILE.keys())),
-		expand('clinSV/{sample}.clinsv.SV-CNV.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
+		expand('clinSV/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx', sample=list(SAMPLE_LANEFILE.keys())),
 		'orf15/combine.orf15.done.txt'
 
 localrules: dummy
@@ -1068,7 +1068,7 @@ rule bcm_locus:
 			{output.bam} \
 			| vcffilter -f "QUAL > 10 & SAF > 0 & SAR > 0 & RPR > 0 & RPL > 0 & AO > 2 & DP > 5" \
 			| bcftools +fill-tags - -Ou -- -t VAF \
-			| bcftools norm --multiallelics -any --output-type u - \
+			| bcftools norm --multiallelics -any --output-type u --force - \
 			| vt decompose_blocksub -p -m -d 2 - \
 			| bcftools norm --check-ref s --fasta-ref {config[GRCh38Decoy2]} --output-type u - \
 			| bcftools annotate --set-id 'sml_%CHROM\:%POS%REF\>%ALT' -x ^INFO/AO,^FORMAT/GT,FORMAT/DP,FORMAT/VAF --output-type v --no-version \
@@ -1079,7 +1079,7 @@ rule bcm_locus:
 			-Oz -o {output.vcf}
 		tabix -p vcf {output.vcf}
 		"""
-
+#bcftools norm --multiallelics -any --output-type u --force. "--force" because some samples gave error: wrong number of fields in FMT/AD at chrX:154156435, expected 3, found 4. Use --force to proceed anyway.
 localrules: bcm_locus_anno
 rule bcm_locus_anno:
 	input:
@@ -1504,9 +1504,8 @@ rule clinsv:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		vcf = 'clinSV/{sample}.clinsv.SV-CNV.vcf.gz',
-		clinSV_Dir = temp(directory('clinSV/{sample}'))
-	threads: 24
+		vcf = 'clinSV/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx'
+	threads: 28
 	shell:
 		"""
 		if (( $(module list 2>&1 | grep " R/" | wc -l) == 1 )); then module unload R; fi
@@ -1525,15 +1524,21 @@ rule clinsv:
 			-p /app/project_folder/ \
 			-i "/app/input/sample_bam/{wildcards.sample}.markDup.bam" \
 			-ref /app/ref-data/refdata-b38
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz.tbi
+		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz
+		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz.tbi
 		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.PASS.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
 		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
-		module load {config[annotsv_version]} {config[samtools_version]} {config[R_version]}
+		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx
+		mv clinSV/{wildcards.sample}/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}.QC_report.pdf
+		if [ ! -e clinSV/result_description.docx ];	then
+			cp clinSV/{wildcards.sample}/results/result_description.docx clinSV/result_description.docx
+		fi
+		module load {config[samtools_version]}
 		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
 		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
-		tabix -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz
-		tabix -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz
+		tabix -f -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz
+		tabix -f -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz
+		module load {config[annotsv_version]}
 		AnnotSV -SVinputFile clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
 			-outputDir clinSV/{wildcards.sample} \
@@ -1544,16 +1549,14 @@ rule clinsv:
 			-outputDir clinSV/{wildcards.sample} \
 			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
 		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
+		module load {config[R_version]}
 		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/clinsv_author_excel.R \
 			{config[OGL_Dx_research_genes]} \
-			clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx \
+			clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx \
 			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
 			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx
-		mv clinSV/{wildcards.sample}/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}.QC_report.pdf
-		if [ ! -e clinSV/result_description.docx ];	then
-			cp clinSV/{wildcards.sample}/results/result_description.docx clinSV/result_description.docx
-		fi
-		#rm -rf clinSV/{wildcards.sample}
+		rm clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx
+		rm clinSV/{wildcards.sample}
 		"""
 
 #sort necessary before mark_dup? it was sorted during the merge lane_bam step.
