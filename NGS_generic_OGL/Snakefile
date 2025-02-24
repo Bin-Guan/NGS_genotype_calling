@@ -1087,10 +1087,10 @@ rule bcm_locus_anno:
 		chrCoverage = 'coverage/mosdepth/{sample}.md.mosdepth.summary.txt',
 		bcm_mosdepth = 'bcmlocus/mosdepth/{sample}.md.regions.bed.gz'
 	output:
-		bcm_cn = 'bcmlocus/{sample}.bcm.cn.tsv',
-		bcm_cn_wide = 'bcmlocus/{sample}.bcm.cn.wide.tsv',
+		bcm_cn = 'bcmlocus/tsv/{sample}.bcm.cn.tsv',
+		bcm_cn_wide = 'bcmlocus/tsv/{sample}.bcm.cn.wide.tsv',
 		avinput = temp('bcmlocus/{sample}.avinput'),
-		bcm_variant = 'bcmlocus/{sample}.bcmlocus.tsv'
+		bcm_variant = 'bcmlocus/tsv/{sample}.bcmlocus.tsv'
 	shell:
 		"""
 		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
@@ -1135,13 +1135,13 @@ rule bcm_locus_anno:
 localrules: combine_bcmlocus
 rule combine_bcmlocus:
 	input:
-		bcm_variant = expand('bcmlocus/{sample}.bcmlocus.tsv', sample=list(SAMPLE_LANEFILE.keys())),
-		bcm_cn_wide = expand('bcmlocus/{sample}.bcm.cn.wide.tsv', sample=list(SAMPLE_LANEFILE.keys()))
+		bcm_variant = expand('bcmlocus/tsv/{sample}.bcmlocus.tsv', sample=list(SAMPLE_LANEFILE.keys())),
+		bcm_cn_wide = expand('bcmlocus/tsv/{sample}.bcm.cn.wide.tsv', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
 		'bcmlocus/combine.bcmlocus.done.txt'
 	shell:
 		"""
-		echo -e "CHROM\tPOS\tID\tREF\tALT\tQUAL\tFunc.refGeneWithVer\tGene.refGeneWithVer\tGeneDetail.refGeneWithVer\tExonicFunc.refGeneWithVer\tAAChange.refGeneWithVer\tHGVSp\tAnnotation\tFunction\tACMG_Class\tNote\tSample\tINFO\tFORMAT\tGT_FIELDS" > bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv
+		head -n 1 {input.bcm_variant[0]} > bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv
 		head -n 1 {input.bcm_cn_wide[0]} > bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.CN.tsv
 		for file in {input.bcm_variant}; do
 			tail -n +2 $file >> bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv

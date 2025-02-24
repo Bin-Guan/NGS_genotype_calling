@@ -79,7 +79,3 @@ bedtools_version: 'bedtools/2.30.0' #from 2.29.0 Aug 2023
 OGL_Dx_research_genes: '/data/OGL/resources/OGLpanelGeneDxORcandidate.xlsx'
 whatshap_version: 'whatshap/1.1'
 HGMDtranscript: '/data/OGL/resources/HGMD/HGMDtranscript.txt'
-NGS_genotype_calling.git: ''
-NGS_genotype_calling.git.date: ''
-NGS_genotype_calling.git: ''
-NGS_genotype_calling.git.date: ''
