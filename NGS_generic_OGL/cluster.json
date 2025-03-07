@@ -63,8 +63,8 @@
 	{
 		"partition" : "norm",
 		"extra" : "--gres=lscratch:200",
-		"time" : "36:00:00",
-		"mem" : "64g"
+		"time" : "28:00:00",
+		"mem" : "48g"
 	},
 	"orf15" :
 	{
@@ -140,7 +140,7 @@
 		"time" : "4:00:00",
 		"mem" : "100g",
 		"threads" : "56",
-		"extra" : "--gres=lscratch:600"
+		"extra" : "--gres=lscratch:800"
 	},
 	"realign" :
 	{

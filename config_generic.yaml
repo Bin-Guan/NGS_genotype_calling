@@ -46,7 +46,7 @@ samblaster_version: 'samblaster/0.1.26' #from 0.1.26 Aug 2023
 sambamba_version: 'sambamba/1.0.0' #from 0.8.1 Aug 2023
 annovar_version: 'annovar/2020-06-08' #updated from 2019-10-24 on 3/4/2022
 crossmap_version: 'crossmap/0.6.5' #updated from 0.5.4 Aug 2023
-clair3_version: 'clair3/1.0.10'
+clair3_version: 'clair3/20250303'
 #ref_genome: '/fdb/GATK_resource_bundle/b37-2.8/human_g1k_v37_decoy.fasta'
 old_cram_ref: '/data/OGL/resources/1000G_phase2_GRCh37/human_g1k_v37_decoy.fasta' #realignment
 cram_ref: '/data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa' #no-realignment

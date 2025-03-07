@@ -20,6 +20,15 @@ module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exi
 #snakemake/6.8.2 act a little bit weird. Line no. is Snakefile messed up. 3/1/2022
 #previous version 6.0.5 Aug 2023
 
+WORK_DIR=$PWD
+echo "NGS_genotype_calling.git.in.OGL_resources: '$(head -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
+echo "NGS_genotype_calling.git.in.OGL_resources.date: '$(cat /data/OGL/resources/NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
+cd ~/git/NGS_genotype_calling
+git log | head -n 5 > $WORK_DIR/NGS_genotype_calling.git.log
+cd $WORK_DIR
+echo "NGS_genotype_calling.git: '$(cat NGS_genotype_calling.git.log | head -n 1)'" >> $1
+echo "NGS_genotype_calling.git.date: '$(cat NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
+
 sbcmd="sbatch --cpus-per-task={threads} \
 --mem={cluster.mem} \
 --time={cluster.time} \
@@ -98,14 +107,6 @@ case "${ngstype^^}" in
 esac
 
 
-WORK_DIR=$PWD
-echo "NGS_genotype_calling.git.in.OGL_resources: '$(head -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
-echo "NGS_genotype_calling.git.in.OGL_resources.date: '$(cat /data/OGL/resources/NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
-cd ~/git/NGS_genotype_calling
-git log | head -n 5 > $WORK_DIR/NGS_genotype_calling.git.log
-cd $WORK_DIR
-echo "NGS_genotype_calling.git: '$(cat NGS_genotype_calling.git.log | head -n 1)'" >> $1
-echo "NGS_genotype_calling.git.date: '$(cat NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
 
 #replaced "parallel=4" with "res=1"
 # --notemp Ignore temp() declaration;
