@@ -1509,7 +1509,9 @@ rule clinsv:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		vcf = 'clinSV/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx'
+		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf',
+		vcf_rare = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
+		xlsx = temp('clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx')
 	threads: 28
 	shell:
 		"""
@@ -1543,25 +1545,38 @@ rule clinsv:
 		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
 		tabix -f -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz
 		tabix -f -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz
-		module load {config[annotsv_version]}
-		AnnotSV -SVinputFile clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz \
+		"""
+
+localrules: clinsv_anno
+rule clinsv_anno:
+	input:
+		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf',
+		vcf_rare = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
+		xlsx = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx'
+	output:
+		xlsx = 'clinSV/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx'
+	resources: res=1
+	shell:
+		"""
+		if [[ $(module list 2>&1 | grep "annotsv" | wc -l) -lt 1 ]]; then module load {config[annotsv_version]}; fi
+		mkdir -p clinSV/{wildcards.sample}
+		AnnotSV -SVinputFile {input.vcf_pass} \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
 			-outputDir clinSV/{wildcards.sample} \
 			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv
 		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv clinSV/{wildcards.sample}.clinSV.PASS.annotated.tsv
-		AnnotSV -SVinputFile clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz \
+		AnnotSV -SVinputFile {input.vcf_rare} \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
 			-outputDir clinSV/{wildcards.sample} \
 			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
 		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
-		module load {config[R_version]}
+		if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/clinsv_author_excel.R \
 			{config[OGL_Dx_research_genes]} \
 			clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx \
 			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
-			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx
-		rm clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx
-		rm clinSV/{wildcards.sample}
+			{output.xlsx}
+		#rm -fr clinSV/{wildcards.sample}
 		"""
 
 #sort necessary before mark_dup? it was sorted during the merge lane_bam step.
