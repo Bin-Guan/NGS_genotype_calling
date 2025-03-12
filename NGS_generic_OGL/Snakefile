@@ -1509,7 +1509,7 @@ rule clinsv:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf',
+		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf.gz',
 		vcf_rare = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
 		xlsx = temp('clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx')
 	threads: 28
@@ -1531,12 +1531,12 @@ rule clinsv:
 			-p /app/project_folder/ \
 			-i "/app/input/sample_bam/{wildcards.sample}.markDup.bam" \
 			-ref /app/ref-data/refdata-b38
-		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz
-		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz.tbi
-		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.PASS.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
-		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
-		mv clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx
-		mv clinSV/{wildcards.sample}/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}.QC_report.pdf
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz.tbi
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.PASS.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
+		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx
+		cp clinSV/{wildcards.sample}/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}.QC_report.pdf
 		if [ ! -e clinSV/result_description.docx ];	then
 			cp clinSV/{wildcards.sample}/results/result_description.docx clinSV/result_description.docx
 		fi
@@ -1550,7 +1550,7 @@ rule clinsv:
 localrules: clinsv_anno
 rule clinsv_anno:
 	input:
-		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf',
+		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf.gz',
 		vcf_rare = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
 		xlsx = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx'
 	output:
