@@ -4,6 +4,7 @@
 #SBATCH --gres=lscratch:100
 #SBATCH --time=2:0:0
 set -e
+bed=$1
 module load clair3/20250303 annovar/2020-06-08 samtools/1.21
 
 mkdir -p clair3 clairAnnotation
@@ -15,8 +16,10 @@ clair3 \
   --ref_fn=/data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa \
   --threads=8 \
   --platform=ilmn \
-  --bed_fn=/data/OGL/resources/bed/RPGR_ORF15.bed \
+  --bed_fn=$bed \
   --model_path=/data/OGL/resources/clair3/ilmn \
+  --snp_min_af=0.05 \
+  --print_ref_calls \
   --ref_pct_full=1.0 --var_pct_full=0.5 \
   --chunk_size=-1 \
   --output=/lscratch/$SLURM_JOB_ID/$sample
@@ -26,8 +29,7 @@ AddPairEndAlleleDepth.py --bam_fn bam/$sample.bam \
 	--threads 1
 bcftools norm --check-ref s --fasta-ref /data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa --output-type u \
 	/lscratch/$SLURM_JOB_ID/$sample/merge_output.pead.vcf.gz \
-	| bcftools norm --multiallelics -any --output-type u - \
-	| bcftools annotate --set-id '%CHROM-%POS-%REF-%ALT' --output-type u --no-version \
+	| bcftools annotate --set-id '%CHROM-%POS-%REF-%ALT' --output-type v --no-version \
 	| bcftools norm -d exact --output-type z -o clair3/$sample.vcf.gz
 tabix -f -p vcf clair3/$sample.vcf.gz
 convert2annovar.pl -format vcf4old clair3/$sample.vcf.gz -includeinfo --outfile clairAnnotation/$sample.avinput

@@ -3,15 +3,21 @@
 #SBATCH --cpus-per-task=28
 #SBATCH --mem=64g
 #SBATCH --partition=norm
-#SBATCH --time=32:0:0
+#SBATCH --time=48:0:0
 
 config=$1
 sample=$2
 
 #selecting mapped reads using subset_mapped_reads.sh reduced sample processing time to 44 hours.
-#selecting reads using subset_chr1-M_reads.sh ???
-#The bam file has to be saved in the directory sample_bam and named as *.markDup.bam, unless changing the code below.
+#selecting reads using subset_chr1-M_reads.sh: 40 hours (without P flag. Adding P flag makes the run > 48h).
+
 set -e
+mkdir -p sample_bam/subset
+module load $(grep "^samtools_version:" $config | head -n 1 | cut -d"'" -f 2)
+samtools view --threads $SLURM_CPUS_PER_TASK -b sample_bam/$sample.markDup.bam --output sample_bam/subset/$sample.markDup.bam \
+	chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY chrM
+samtools index -@ $SLURM_CPUS_PER_TASK sample_bam/subset/$sample.markDup.bam
+
 if (( $(module list 2>&1 | grep " R/" | wc -l) == 1 )); then module unload R; fi
 module load clinsv/1.1
 refdata_path=/usr/local/apps/clinsv/ref_hg38/clinsv/refdata-b38
@@ -26,15 +32,14 @@ singularity run --bind $refdata_path:/app/ref-data/refdata-b38 \
 	/app/clinsv/bin/clinsv \
 	-r all -f \
 	-p /app/project_folder/ \
-	-i "/app/input/sample_bam/$sample.markDup.bam" \
+	-i "/app/input/sample_bam/subset/$sample.markDup.bam" \
 	-ref /app/ref-data/refdata-b38
-mv clinSV/$sample/SVs/joined/SV-CNV.vcf.gz clinSV/$sample.clinsv.SV-CNV.vcf.gz
-mv clinSV/$sample/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/$sample.clinsv.SV-CNV.vcf.gz.tbi
-mv clinSV/$sample/SVs/joined/SV-CNV.PASS.vcf clinSV/$sample.clinsv.SV-CNV.PASS.vcf
-mv clinSV/$sample/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/$sample.clinsv.SV-CNV.RARE_PASS_GENE.vcf
-mv clinSV/$sample/results/$sample.QC_report.pdf clinSV/$sample.QC_report.pdf
+cp clinSV/$sample/SVs/joined/SV-CNV.vcf.gz clinSV/$sample.clinsv.SV-CNV.vcf.gz
+cp clinSV/$sample/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/$sample.clinsv.SV-CNV.vcf.gz.tbi
+cp clinSV/$sample/SVs/joined/SV-CNV.PASS.vcf clinSV/$sample.clinsv.SV-CNV.PASS.vcf
+cp clinSV/$sample/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/$sample.clinsv.SV-CNV.RARE_PASS_GENE.vcf
+cp clinSV/$sample/results/$sample.QC_report.pdf clinSV/$sample.QC_report.pdf
 
-module load $(grep "^samtools_version:" $config | head -n 1 | cut -d"'" -f 2)
 bgzip clinSV/$sample.clinsv.SV-CNV.PASS.vcf
 bgzip clinSV/$sample.clinsv.SV-CNV.RARE_PASS_GENE.vcf
 tabix -f -p vcf clinSV/$sample.clinsv.SV-CNV.PASS.vcf.gz

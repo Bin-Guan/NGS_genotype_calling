@@ -131,7 +131,7 @@
 	{
 		"partition" : "norm",
 		"time" : "6:00:00",
-		"mem" : "96g",
+		"mem" : "16g",
 		"extra" : "--gres=lscratch:200"
 	},
 	"align_markdup" :

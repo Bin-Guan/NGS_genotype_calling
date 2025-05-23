@@ -731,7 +731,7 @@ rule merge_deepvariantVcf:
 		case "{input.vcf}" in
 			*\ *)
 				bcftools merge --merge none --missing-to-ref --output-type z --threads {threads} {input.vcf} \
-				> deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
+				-o deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
 				sleep 2
 				tabix -f -p vcf deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
 				;;
@@ -1319,9 +1319,9 @@ rule cat_fbvcfs:
 	shell:
 		"""
 		module load {config[samtools_version]}
-		bcftools concat --threads {threads} --output-type z {input.vcf} > {output.vcf}
+		bcftools concat --threads {threads} --output-type z {input.vcf} -o {output.vcf}
 		tabix -f -p vcf {output.vcf}
-		bcftools concat --threads {threads} --output-type z {input.phasedvcf} > {output.phasedvcf}
+		bcftools concat --threads {threads} --output-type z {input.phasedvcf} -o {output.phasedvcf}
 		tabix -f -p vcf {output.phasedvcf}
 		"""
 		# bcftools concat --threads {threads} --output-type z {input.filteredvcf} > {output.filteredvcf}
@@ -1378,7 +1378,7 @@ rule merge_freebayes:
 		case "{input.vcf}" in
 			*\ *)
 				bcftools merge --merge none --missing-to-ref --output-type z --threads {threads} {input.vcf} \
-				> freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
+				-o freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
 				tabix -f -p vcf freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
 				;;
 			*)
@@ -1576,7 +1576,7 @@ rule clinsv_anno:
 			clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx \
 			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
 			{output.xlsx}
-		#rm -fr clinSV/{wildcards.sample}
+		rm -fr clinSV/{wildcards.sample}
 		"""
 
 #sort necessary before mark_dup? it was sorted during the merge lane_bam step.
