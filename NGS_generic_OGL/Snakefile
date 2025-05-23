@@ -663,7 +663,8 @@ rule deepvariantS3:
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		vcf = 'deepvariant/vcf/{sample}.vcf.gz',
-		gvcf = 'deepvariant/gvcf/{sample}.g.vcf.gz'
+		gvcf = 'deepvariant/gvcf/{sample}.g.vcf.gz',
+		sample_dir = temp(directory('deepvariant/{sample}'))
 	threads: 4
 	shell:
 		"""
@@ -702,7 +703,8 @@ rule deepvariantS3:
 localrules: dv_hardfilter
 rule dv_hardfilter:
 	input:
-		vcf = 'deepvariant/vcf/{sample}.vcf.gz'
+		vcf = 'deepvariant/vcf/{sample}.vcf.gz',
+		sample_dir = 'deepvariant/{sample}'
 	output:
 		filteredvcf = 'deepvariant/vcf/{sample}.dv.filtered.vcf.gz',
 		filteredtbi = 'deepvariant/vcf/{sample}.dv.filtered.vcf.gz.tbi'
@@ -825,7 +827,7 @@ rule merge_deepvariant_glnexusVcf:
 		case "{input.vcf}" in
 			*\ *)
 				bcftools merge --merge none --missing-to-ref --output-type z --threads {threads} {input.vcf} \
-				> deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz
+				-o deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz
 				sleep 2
 				tabix -f -p vcf deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz
 				;;
@@ -1407,7 +1409,7 @@ rule merge_dv_fb_vcfs:
 			deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz \
 			deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
 		bcftools +fill-tags $WORK_DIR/dv/0001.bcf -Ov -- -t AC,AC_Hom,AC_Het,AN,AF \
-			| sed 's#0/0:.:.:.#0/0:10:10:10,0#g' - \
+			| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
 			| bcftools annotate --threads {threads} --set-id 'dv_%CHROM\:%POS%REF\>%ALT' --no-version - -Oz -o $WORK_DIR/dv/dv.hf.vcf.gz
 		tabix -f -p vcf $WORK_DIR/dv/dv.hf.vcf.gz
 		bcftools concat --threads {threads} -a --rm-dups none --no-version \
@@ -1424,7 +1426,7 @@ rule merge_dv_fb_vcfs:
 		#rm $WORK_DIR/0000.vcf &
 		bcftools annotate --threads {threads} --set-id 'fb_%CHROM\:%POS%REF\>%ALT' -x ^INFO/QA,FORMAT/RO,FORMAT/QR,FORMAT/AO,FORMAT/QA,FORMAT/GL \
 			--no-version $WORK_DIR/0001.vcf.gz -Ov - \
-			| sed 's#0/0:.:.:.#0/0:10:10:10,0#g' - \
+			| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
 			| bcftools +fill-tags - -Oz -o $WORK_DIR/fb.vcf.gz -- -t AC,AC_Hom,AC_Het,AN,AF
 		rm $WORK_DIR/0001.vcf.gz &
 		zcat $WORK_DIR/0002.vcf.gz | sed 's/\tdv/\tfbDv/' | bgzip -@ {threads} > $WORK_DIR/dvFb.vcf.gz
@@ -1438,6 +1440,10 @@ rule merge_dv_fb_vcfs:
 		tabix -f -p vcf prioritization/{config[analysis_batch_name]}.vcf.gz
 		touch {output}
 		"""
+#| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
+# "\" inside sed was added on 5/22/25. Previously the one with "." was interpretated as single character, thus making the AD field has three digits instead of 2 for samples with GT 0/0:2:2:2,3 --> 0/0:10:10:10,0,3
+# if needed, fix vcf files by zcat samples.vcf.gz |  sed 's#0/0:10:10:10,0,#0/0:10:10:10,#g' | bgzip -f >  samples.v1.vcf.gz
+
 # bcftools isec --threads {threads} -p $WORK_DIR --collapse none --no-version -Oz \
 # 	deepvariant/{config[analysis_batch_name]}.dv.phased.vcf.gz \
 # 	freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
