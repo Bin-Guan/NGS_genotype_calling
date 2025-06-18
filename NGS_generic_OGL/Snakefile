@@ -623,7 +623,7 @@ rule deepvariantS2:
 	input:
 		'deepvariant/{sample}/examples'
 	output:
-		temp('deepvariant/{sample}/{sample}.call_variants_output.tfrecord.gz')
+		temp('deepvariant/{sample}.call_variants_output.tfrecord.gz')
 	threads: 8
 	shell:
 		"""
@@ -658,7 +658,7 @@ rule deepvariantS3:
 	input:
 		examples = 'deepvariant/{sample}/examples',
 		gvcf_tfrecords = 'deepvariant/{sample}/gvcf_tfrecords',
-		tfrecord = 'deepvariant/{sample}/{sample}.call_variants_output.tfrecord.gz',
+		tfrecord = 'deepvariant/{sample}.call_variants_output.tfrecord.gz',
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
