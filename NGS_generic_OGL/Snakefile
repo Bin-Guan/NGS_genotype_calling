@@ -650,7 +650,7 @@ rule deepvariantS2:
     		--checkpoint "${{MODEL}}" \
 		) 2>&1 | tee "${{LOG}}/{wildcards.sample}.call_variants.log"
 		echo "Done."
-		cp ${{CALL_VARIANTS_OUTPUT}} ${{PROJECT}}
+		cp ${{CALL_VARIANTS_OUTPUT}} {output}
 		"""
 
 #90min
