@@ -623,7 +623,7 @@ rule deepvariantS2:
 	input:
 		'deepvariant/{sample}/examples'
 	output:
-		temp('deepvariant/{sample}.call_variants_output.tfrecord.gz')
+		temp('deepvariant/{sample}/{sample}.call_variants_output.tfrecord.gz')
 	threads: 8
 	shell:
 		"""
@@ -658,13 +658,12 @@ rule deepvariantS3:
 	input:
 		examples = 'deepvariant/{sample}/examples',
 		gvcf_tfrecords = 'deepvariant/{sample}/gvcf_tfrecords',
-		tfrecord = 'deepvariant/{sample}.call_variants_output.tfrecord.gz',
+		tfrecord = 'deepvariant/{sample}/{sample}.call_variants_output.tfrecord.gz',
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		vcf = 'deepvariant/vcf/{sample}.vcf.gz',
-		gvcf = 'deepvariant/gvcf/{sample}.g.vcf.gz',
-		sample_dir = temp(directory('deepvariant/{sample}'))
+		gvcf = 'deepvariant/gvcf/{sample}.g.vcf.gz'
 	threads: 4
 	shell:
 		"""
@@ -703,8 +702,7 @@ rule deepvariantS3:
 localrules: dv_hardfilter
 rule dv_hardfilter:
 	input:
-		vcf = 'deepvariant/vcf/{sample}.vcf.gz',
-		sample_dir = 'deepvariant/{sample}'
+		vcf = 'deepvariant/vcf/{sample}.vcf.gz'
 	output:
 		filteredvcf = 'deepvariant/vcf/{sample}.dv.filtered.vcf.gz',
 		filteredtbi = 'deepvariant/vcf/{sample}.dv.filtered.vcf.gz.tbi'
@@ -717,6 +715,7 @@ rule dv_hardfilter:
 			| bcftools norm --check-ref s --fasta-ref {config[ref_genome]} --output-type u - \
 			| bcftools norm --threads $(({threads}-2)) -d exact --output-type z --output {output.filteredvcf}
 		tabix -f -p vcf {output.filteredvcf}
+		rm -r deepvariant/{wildcards.sample}
 		"""
 #AD[0:1]>2 to remove the variant on a single read but read from both F- and R- reads.
 

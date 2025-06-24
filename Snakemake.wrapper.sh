@@ -100,7 +100,7 @@ case "${ngstype^^}" in
 		-pr --local-cores 2 --jobs 1999 \
 		--cluster-config /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/cluster.json \
 		--cluster "$sbcmd"  --latency-wait 120 --rerun-incomplete \
-		-k --restart-times 0 \
+		-k --restart-times 1 \
 		--resources res=1 \
 		--configfile $@
 		;;
