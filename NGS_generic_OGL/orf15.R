@@ -8,9 +8,13 @@ excel_output_file <- args[2]
 library(tidyverse)
 library(readxl)
 
-annovar <- read_tsv(tsv_file, col_names = TRUE, na = c("NA", "", "None"), col_types = cols(.default = col_character())) %>%
-  mutate(INFO=recode(INFO, "P" = "pileup", "F" = "full-alignment")) %>% 
-  type_convert()
+annovar <- read_tsv(tsv_file, col_names = TRUE, na = c("NA", "", ".", "None"), col_types = cols(.default = col_character())) %>%
+  mutate(INFO=recode(INFO, "P" = "pileup", "F" = "full-alignment")) %>%
+  separate(GT_FIELDS, c("GT","GQ","DP","AD","AF","PEAD"), sep=":", remove = FALSE) %>% 
+  unite("refgenewithver", GeneDetail.refGeneWithVer, AAChange.refGeneWithVer, sep = ",", remove = TRUE, na.rm = TRUE) %>% 
+  type_convert() %>% 
+  select(Sample, CHROM:GT_FIELDS, Note, AD, PEAD, `Gene.refGeneWithVer`, Func.refGeneWithVer, ExonicFunc.refGeneWithVer, refgenewithver)
+plof <- filter(annovar, grepl("splicing", Func.refGeneWithVer) | grepl("^frameshift|stop|start", ExonicFunc.refGeneWithVer) )
 
-openxlsx::write.xlsx(list("orf15" = annovar), file = excel_output_file, firstRow = TRUE, firstCol = TRUE)
+openxlsx::write.xlsx(list("pLoF" = plof, "orf15" = annovar), file = excel_output_file, firstRow = TRUE, firstCol = TRUE)
 

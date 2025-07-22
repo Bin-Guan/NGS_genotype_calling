@@ -3,7 +3,7 @@
 #SBATCH --mem=16g
 #SBATCH --partition=gpu
 #SBATCH --gres=lscratch:50,gpu:1 --constraint='gpuv100|gpua100|gpuv100x'
-#SBATCH --time=5:0:0
+#SBATCH --time=6:0:0
 
 #dorado works on fast5 files as well.
 #copy data exactly as pod5_pass/barcode01 etc.

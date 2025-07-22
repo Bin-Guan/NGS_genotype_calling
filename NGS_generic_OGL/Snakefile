@@ -134,17 +134,18 @@ rule all:
 		# 'GATK_metrics/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
 		'fastqc/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
 		 expand('picardQC/{sample}.insert_size_metrics.txt', sample=list(SAMPLE_LANEFILE.keys())) if config['picardQC'] == 'TRUE' else 'dummy.txt',
-		#'deepvariant/deepvariantVcf.merge.done.txt' if config['deepvariant'] == 'TRUE' else 'dummy.txt',
-		'prioritization/dv_fb.merge.done.txt' if config['freebayes_phasing'] == 'TRUE' else 'deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt',
-		'coverage/mean.coverage.done.txt' if config['coverage'] == 'TRUE' else 'dummy.txt',
-		'mutserve/haplocheck.done.txt',
+		#'deepvariant/deepvariantVcf.merge.done' if config['deepvariant'] == 'TRUE' else 'dummy.txt',
+		'prioritization/dv_fb.merge.done' if config['freebayes_phasing'] == 'TRUE' else 'deepvariant/deepvariant_phased_glnexusVcf.merge.done',
+		'clair3/clair3.merge.done',
+		'coverage/mean.coverage.done' if config['coverage'] == 'TRUE' else 'dummy.txt',
+		'mutserve/haplocheck.done',
 		expand('manta/manta.{sample}.annotated.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['manta'] == 'TRUE' else 'dummy.txt',
 		expand('scramble_anno/{sample}.scramble.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['SCRAMble'] == 'TRUE' else 'dummy.txt',
-		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['freebayes_phasing'] == 'TRUE' else 'deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt',
-		'bcmlocus/combine.bcmlocus.done.txt' if config['bcmlocus'] == 'TRUE' else 'dummy.txt',
+		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['freebayes_phasing'] == 'TRUE' else 'deepvariant/deepvariant_phased_glnexusVcf.merge.done',
+		'bcmlocus/combine.bcmlocus.done' if config['bcmlocus'] == 'TRUE' else 'dummy.txt',
 		expand('jax-cnv/{sample}.merge.bed', sample=list(SAMPLE_LANEFILE.keys())),
-		expand('clinSV/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx', sample=list(SAMPLE_LANEFILE.keys())),
-		'orf15/combine.orf15.done.txt'
+		expand('clinSV/{sample}/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx', sample=list(SAMPLE_LANEFILE.keys())),
+		'orf15/combine.orf15.done'
 
 localrules: dummy
 rule dummy:
@@ -206,8 +207,8 @@ if config['inputFileType'] == 'single_lane_fastq':
 			bai = 'sample_bam/{sample}.markDup.bam.bai'
 		shell:
 			"""
-			cp -p -l {input.bam} {output.bam}
-			cp -p -l {input.bai} {output.bai}
+			cp -l {input.bam} {output.bam}
+			cp -l {input.bai} {output.bai}
 			"""
 elif config['inputFileType'].upper() in ['BAM-REALIGN', 'CRAM-REALIGN']:
 	rule realign: # up to 12.5h for cram
@@ -305,14 +306,14 @@ elif config['inputFileType'].upper() in ['BAM']:
 			"""
 			BAMFILE={input}
 			if [ -e {input}.bai ]; then
-				cp -p -l {input} {output.bam}
-				cp -p -l {input}.bai {output.bai}
+				cp -l {input} {output.bam}
+				cp -l {input}.bai {output.bai}
 			elif [ -e ${{BAMFILE%.bam}}.bai ]; then
-				cp -p -l {input} {output.bam}
+				cp -l {input} {output.bam}
 				cp ${{BAMFILE%.bam}}.bai {output.bai}
 			else
 				if (( $(module list 2>&1 | grep "sambamba" | wc -l) < 1 )); then module load {config[sambamba_version]}; fi
-				cp -p -l {input} {output.bam}
+				cp -l {input} {output.bam}
 				sambamba index -t $(({threads}-2)) {output.bam}
 			fi
 			"""
@@ -528,7 +529,7 @@ rule mean_coverage:
 	input:
 		expand('coverage/mosdepth/{sample}.md.mosdepth.summary.txt', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'coverage/mean.coverage.done.txt'
+		'coverage/mean.coverage.done'
 	shell:
 		"""
 		echo -e "sample\tlength\tmean" > coverage/{config[analysis_batch_name]}.mean.region.coverage.summary.tsv
@@ -572,9 +573,74 @@ rule keep_bam:
 		bai = 'bam/{sample}.bam.bai'
 	shell:
 		"""
-		cp -p -l {input.bam} {output.bam}
-		cp -p -l {input.bai} {output.bai}
+		cp -l {input.bam} {output.bam}
+		cp -l {input.bai} {output.bai}
 		"""
+#genomes take ~3h30min, but allotted 8 hours.
+rule clair3:
+	input:
+		bam = 'sample_bam/{sample}.markDup.bam',
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
+	output:
+		gvcf = 'clair3/gvcf/{sample}.clr3.gvcf.gz',
+		gvcftbi = 'clair3/gvcf/{sample}.clr3.gvcf.gz.tbi',
+		phasedvcf = 'clair3/vcf/{sample}.clr3.phased.vcf.gz',
+		phasedtbi = 'clair3/vcf/{sample}.clr3.phased.vcf.gz.tbi',
+		filteredvcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz',
+		filteredtbi = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi',
+	threads: 56
+	shell:
+		"""
+		module load {config[clair3_version]} {config[samtools_version]} {config[whatshap_version]}
+		LWORK_DIR=/lscratch/$SLURM_JOB_ID
+		clair3 --bam_fn {input.bam} \
+			--ref_fn={config[ref_genome]} \
+			--threads=$(($SLURM_CPUS_PER_TASK-2)) --platform=ilmn --gvcf \
+			--model_path=/data/OGL/resources/clair3/ilmn \
+			--use_whatshap_for_final_output_phasing \
+			--sample_name={wildcards.sample} \
+			--output=$LWORK_DIR
+		cp $LWORK_DIR/merge_output.gvcf.gz {output.gvcf}
+		cp $LWORK_DIR/merge_output.gvcf.gz.tbi {output.gvcftbi}
+		cp $LWORK_DIR/phased_merge_output.vcf.gz {output.phasedvcf}
+		cp $WORK_DIR/phased_merge_output.vcf.gz.tbi {output.phasedtbi}
+		bcftools norm --multiallelics -any --output-type u {output.phasedvcf} \
+			| bcftools norm -d exact --output-type u - \
+			| bcftools filter --threads $(({threads}-2)) --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
+		sleep 2
+		tabix -f -p vcf {output.filteredvcf}
+		#bcftools view ORF15 + PEAD, then bcftools concat
+		"""
+
+rule merge_clair3:
+	input:
+		vcf = expand('clair3/vcf/{sample}.clr3.filtered.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
+		tbi = expand('clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
+	output:
+		'clair3/clair3.merge.done'
+	threads: 8
+	shell:
+		"""
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
+		case "{input.vcf}" in
+			*\ *)
+				bcftools merge --merge none --missing-to-ref --output-type u --threads {threads} {input.vcf} \
+					| bcftools annotate --threads {threads} --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --no-version - -Ou \
+					| bcftools +fill-tags - -Ov -- -t AC,AC_Hom,AC_Het,AN,AF \
+					| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
+					| bgzip -f > clair3/{config[analysis_batch_name]}.clr3.vcf.gz
+				tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.vcf.gz
+				;;
+			*)
+				bcftools +fill-tags {input.vcf} -Ou -- -t AC,AC_Hom,AC_Het,AN,AF \
+					 | bcftools annotate --threads {threads} --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --no-version -\
+					  -Oz -o clair3/{config[analysis_batch_name]}.clr3.vcf.gz
+				tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.vcf.gz
+				;;
+		esac
+		touch {output}
+		"""
+
 
 #1h40min 22g max mem
 rule deepvariantS1:
@@ -724,7 +790,7 @@ rule merge_deepvariantVcf:
 		vcf = expand('deepvariant/vcf/{sample}.dv.filtered.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
 		tbi = expand('deepvariant/vcf/{sample}.dv.filtered.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'deepvariant/deepvariantVcf.merge.done.txt'
+		'deepvariant/deepvariantVcf.merge.done'
 	threads: 16
 	shell:
 		"""
@@ -737,8 +803,8 @@ rule merge_deepvariantVcf:
 				tabix -f -p vcf deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
 				;;
 			*)
-				cp -p -l {input.vcf} deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
-				cp -p -l {input.tbi} deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz.tbi
+				cp -l {input.vcf} deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz
+				cp -l {input.tbi} deepvariant/{config[analysis_batch_name]}.dv.hf.vcf.gz.tbi
 				;;
 		esac
 		touch {output}
@@ -750,7 +816,7 @@ rule glnexus:
 		#bam = expand('sample_bam/{sample}.markDup.bam', sample=list(SAMPLE_LANEFILE.keys())),
 		#bai = expand('sample_bam/{sample}.markDup.bai', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'deepvariant/deepvariant.gvcf.merge.done.txt'
+		'deepvariant/deepvariant.gvcf.merge.done'
 	threads: 72
 	shell:
 		"""
@@ -772,7 +838,7 @@ rule glnexus:
 #took 55min & 43G mem.
 rule dv_whatshap:
 	input:
-		glnexus = 'deepvariant/deepvariant.gvcf.merge.done.txt',
+		glnexus = 'deepvariant/deepvariant.gvcf.merge.done',
 		#vcf = 'deepvariant/vcf/{sample}.vcf.gz',
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
@@ -818,7 +884,7 @@ rule merge_deepvariant_glnexusVcf:
 		vcf = expand('deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
 		tbi = expand('deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt'
+		'deepvariant/deepvariant_phased_glnexusVcf.merge.done'
 	threads: 16
 	shell:
 		"""
@@ -831,8 +897,8 @@ rule merge_deepvariant_glnexusVcf:
 				tabix -f -p vcf deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz
 				;;
 			*)
-				cp -p -l {input.vcf} deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz
-				cp -p -l {input.tbi} deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz.tbi
+				cp -l {input.vcf} deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz
+				cp -l {input.tbi} deepvariant/{config[analysis_batch_name]}.dv.glnexus.phased.vcf.gz.tbi
 				;;
 		esac
 		touch {output}
@@ -996,7 +1062,7 @@ rule haplocheck:
 		vcf = expand('mutserve/{sample}.mt.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
 		tbi = expand('mutserve/{sample}.mt.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'mutserve/haplocheck.done.txt'
+		'mutserve/haplocheck.done'
 	shell:
 		"""
 		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
@@ -1008,8 +1074,8 @@ rule haplocheck:
 				tabix -f -p vcf mutserve/{config[analysis_batch_name]}.mt.vcf.gz
 				;;
 			*)
-				cp -p -l {input.vcf} mutserve/{config[analysis_batch_name]}.mt.vcf.gz
-				cp -p -l {input.tbi} mutserve/{config[analysis_batch_name]}.mt.vcf.gz.tbi
+				cp -l {input.vcf} mutserve/{config[analysis_batch_name]}.mt.vcf.gz
+				cp -l {input.tbi} mutserve/{config[analysis_batch_name]}.mt.vcf.gz.tbi
 				;;
 		esac
 		HAPLOCHECK_HOME="/data/OGL/resources/git/haplocheck"
@@ -1139,7 +1205,7 @@ rule combine_bcmlocus:
 		bcm_variant = expand('bcmlocus/tsv/{sample}.bcmlocus.tsv', sample=list(SAMPLE_LANEFILE.keys())),
 		bcm_cn_wide = expand('bcmlocus/tsv/{sample}.bcm.cn.wide.tsv', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'bcmlocus/combine.bcmlocus.done.txt'
+		'bcmlocus/combine.bcmlocus.done'
 	shell:
 		"""
 		head -n 1 {input.bcm_variant[0]} > bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv
@@ -1164,7 +1230,7 @@ rule orf15:
 	threads: 2
 	shell:
 		"""
-		module load {config[clair3_version]} {config[annovar_version]} {config[samtools_version]}
+		module load clair3/20250303 {config[samtools_version]} #PEAD not yet carried over to 1.1.2
 		clair3  --bam_fn={input.bam} \
 			--ref_fn={config[ref_genome]} \
 			--threads={threads} \
@@ -1183,6 +1249,7 @@ rule orf15:
 			| bcftools annotate --set-id '%CHROM-%POS-%REF-%ALT' --output-type v --no-version \
 			| bcftools norm -d exact --output-type z -o {output.vcf}
 		tabix -f -p vcf {output.vcf}
+		module load {config[annovar_version]}
 		convert2annovar.pl -format vcf4old {output.vcf} \
 			-includeinfo --outfile /lscratch/$SLURM_JOB_ID/{wildcards.sample}.avinput
 		ver=hg38
@@ -1206,7 +1273,7 @@ rule combine_orf15:
 	input:
 		tsv = expand('orf15/annovar/{sample}.orf15.annovar.tsv', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'orf15/combine.orf15.done.txt'
+		'orf15/combine.orf15.done'
 	shell:
 		"""
 		head -n 1 {input.tsv[0]} > orf15/{config[analysis_batch_name]}.orf15.all.tsv
@@ -1331,7 +1398,7 @@ rule cat_fbvcfs:
 #genome: <30min, <2.5gb
 rule automap_roh:
 	input:
-		vcf = 'freebayes/vcf/{sample}.vcf.gz'
+		vcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz'
 	output:
 		tsv = temp('AutoMap/{sample}/{sample}.HomRegions.tsv'),
 		bed = temp('AutoMap/{sample}/{sample}.HomRegions.bed'),
@@ -1371,7 +1438,7 @@ rule merge_freebayes:
 		vcf = expand('freebayes/vcf/{sample}.phased.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
 		tbi = expand('freebayes/vcf/{sample}.phased.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'freebayes/freebayes.merge.done.txt'
+		'freebayes/freebayes.merge.done'
 	threads: 16
 	shell:
 		"""
@@ -1383,8 +1450,8 @@ rule merge_freebayes:
 				tabix -f -p vcf freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
 				;;
 			*)
-				cp -p -l {input.vcf} freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
-				cp -p -l {input.tbi} freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz.tbi
+				cp -l {input.vcf} freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz
+				cp -l {input.tbi} freebayes/{config[analysis_batch_name]}.freebayes.vcf.gz.tbi
 				;;
 		esac
 		touch {output}
@@ -1394,11 +1461,11 @@ rule merge_freebayes:
 #fast and only used 4 cpus, 100mg and 4 mins for 2 wgs data.
 rule merge_dv_fb_vcfs:
 	input:
-		'deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt',
-		'deepvariant/deepvariantVcf.merge.done.txt',
-		'freebayes/freebayes.merge.done.txt'
+		'deepvariant/deepvariant_phased_glnexusVcf.merge.done',
+		'deepvariant/deepvariantVcf.merge.done',
+		'freebayes/freebayes.merge.done'
 	output:
-		'prioritization/dv_fb.merge.done.txt'
+		'prioritization/dv_fb.merge.done'
 	threads: 16
 	shell:
 		"""
@@ -1435,8 +1502,8 @@ rule merge_dv_fb_vcfs:
 		tabix -f -p vcf $WORK_DIR/dvFb.vcf.gz
 		bcftools concat --threads {threads} -a --rm-dups none --no-version \
 			$WORK_DIR/dvFb.vcf.gz $WORK_DIR/0000.vcf.gz $WORK_DIR/fb.vcf.gz -Oz \
-			-o prioritization/{config[analysis_batch_name]}.vcf.gz
-		tabix -f -p vcf prioritization/{config[analysis_batch_name]}.vcf.gz
+			-o prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz
+		tabix -f -p vcf prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz
 		touch {output}
 		"""
 #| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
@@ -1514,9 +1581,10 @@ rule clinsv:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf.gz',
-		vcf_rare = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
-		xlsx = temp('clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx')
+		vcf = 'clinSV/{sample}/{sample}.clinsv.SV-CNV.vcf.gz',
+		vcf_pass = 'clinSV/{sample}/{sample}.clinsv.SV-CNV.PASS.vcf.gz',
+		vcf_rare = 'clinSV/{sample}/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
+		xlsx = temp('clinSV/{sample}/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx')
 	threads: 28
 	shell:
 		"""
@@ -1524,8 +1592,8 @@ rule clinsv:
 		module load clinsv/1.1
 		refdata_path=/usr/local/apps/clinsv/ref_hg38/clinsv/refdata-b38
 		input_path=$PWD
-		project_folder=$PWD/clinSV/{wildcards.sample}
-		rm -rf $project_folder
+		project_folder=/lscratch/$SLURM_JOB_ID/clinSV/{wildcards.sample}/
+		#rm -rf $project_folder # if the project folder is saved, it needs to be deleted to repeat failed runs
 		mkdir -p $project_folder
 		singularity run --bind $refdata_path:/app/ref-data/refdata-b38 \
 			--bind $project_folder:/app/project_folder \
@@ -1536,52 +1604,52 @@ rule clinsv:
 			-p /app/project_folder/ \
 			-i "/app/input/sample_bam/{wildcards.sample}.markDup.bam" \
 			-ref /app/ref-data/refdata-b38
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.vcf.gz.tbi clinSV/{wildcards.sample}.clinsv.SV-CNV.vcf.gz.tbi
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.PASS.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
-		cp clinSV/{wildcards.sample}/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx
-		cp clinSV/{wildcards.sample}/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}.QC_report.pdf
+		cp $project_folder/SVs/joined/SV-CNV.vcf.gz {output.vcf}
+		cp $project_folder/SVs/joined/SV-CNV.vcf.gz.tbi {output.vcf}.tbi
+		cp $project_folder/SVs/joined/SV-CNV.PASS.vcf clinSV/{wildcards.sample}/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
+		cp $project_folder/SVs/joined/SV-CNV.RARE_PASS_GENE.vcf clinSV/{wildcards.sample}/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
+		cp $project_folder/SVs/joined/SV-CNV.RARE_PASS_GENE.xlsx {output.xlsx}
+		cp $project_folder/results/{wildcards.sample}.QC_report.pdf clinSV/{wildcards.sample}/{wildcards.sample}.QC_report.pdf
 		if [ ! -e clinSV/result_description.docx ];	then
-			cp clinSV/{wildcards.sample}/results/result_description.docx clinSV/result_description.docx
+			cp $project_folder/results/result_description.docx clinSV/result_description.docx
 		fi
 		module load {config[samtools_version]}
-		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
-		bgzip clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
-		tabix -f -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz
-		tabix -f -p vcf clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz
+		bgzip clinSV/{wildcards.sample}/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf
+		bgzip clinSV/{wildcards.sample}/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf
+		tabix -f -p vcf clinSV/{wildcards.sample}/{wildcards.sample}.clinsv.SV-CNV.PASS.vcf.gz
+		tabix -f -p vcf clinSV/{wildcards.sample}/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz
 		"""
 
 localrules: clinsv_anno
 rule clinsv_anno:
 	input:
-		vcf_pass = 'clinSV/{sample}.clinsv.SV-CNV.PASS.vcf.gz',
-		vcf_rare = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
-		xlsx = 'clinSV/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx'
+		vcf_pass = 'clinSV/{sample}/{sample}.clinsv.SV-CNV.PASS.vcf.gz',
+		vcf_rare = 'clinSV/{sample}/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz',
+		xlsx = 'clinSV/{sample}/{sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx'
 	output:
-		xlsx = 'clinSV/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx'
+		xlsx = 'clinSV/{sample}/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx'
 	resources: res=1
 	shell:
 		"""
 		if [[ $(module list 2>&1 | grep "annotsv" | wc -l) -lt 1 ]]; then module load {config[annotsv_version]}; fi
-		mkdir -p clinSV/{wildcards.sample}
+		project_folder=/lscratch/$SLURM_JOB_ID/clinSV/{wildcards.sample}/
+		mkdir -p $project_folder
 		AnnotSV -SVinputFile {input.vcf_pass} \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
-			-outputDir clinSV/{wildcards.sample} \
+			-outputDir $project_folder \
 			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv
-		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv clinSV/{wildcards.sample}.clinSV.PASS.annotated.tsv
 		AnnotSV -SVinputFile {input.vcf_rare} \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
-			-outputDir clinSV/{wildcards.sample} \
+			-outputDir $project_folder \
 			-outputFile clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
-		mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
+		#mv clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
 		if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/clinsv_author_excel.R \
 			{config[OGL_Dx_research_genes]} \
-			clinSV/{wildcards.sample}.clinsv.SV-CNV.RARE_PASS_GENE.xlsx \
-			clinSV/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
+			{input.xlsx} \
+			clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
 			{output.xlsx}
-		rm -fr clinSV/{wildcards.sample}
+		#rm -fr clinSV/{wildcards.sample}
 		"""
 
 #sort necessary before mark_dup? it was sorted during the merge lane_bam step.

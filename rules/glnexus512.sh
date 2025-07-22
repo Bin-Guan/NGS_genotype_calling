@@ -9,7 +9,7 @@
 #131 wgs - 512g/480 not sufficient. When using 512g/25l, 200g lscratch is not sufficient.
 #current setting is faster than 56 cpus and 1.5TB memory.
 
-module load glnexus/1.2.7 samtools/1.13
+module load glnexus/1.2.7 samtools/1.21
 
 # glnexus --dir /lscratch/$SLURM_JOB_ID/glnexus --config DeepVariant \
 			# --threads 64 --mem-gbytes 512 \

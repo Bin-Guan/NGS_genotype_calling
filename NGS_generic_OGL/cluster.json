@@ -8,6 +8,13 @@
 		"error" : "00log/{rule}_{wildcards}.err",
 		"extra" : "--gres=lscratch:50"
 	},
+	"clair3":
+	{
+		"partition" : "norm",
+		"mem" : "64g",
+		"time" : "8:00:00",
+		"extra" : "--gres=lscratch:150"
+	},
 	"deepvariantS1" :
 	{
 		"partition" : "norm,quick",

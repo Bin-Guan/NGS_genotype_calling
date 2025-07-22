@@ -2,6 +2,7 @@
 #SBATCH --gres=lscratch:100
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32g
+#SBATCH --time=8:0:0
 
 # add "ulimit -S -u unlimited" to set the process limit to unlimited if not done in ~/.bashrc. It is needed for deepvariant for multiple samples
 # If panel, install Normality package and CoNVaDING, try perldoc -lm Statistics::Normality, to find the installation location, and add "use lib '/usr/local/Perl/5.24.3/lib/perl5/site_perl/5.24.3';" on line 12 (without double quotes) before "use Statistics::Normality 'shapiro_wilk_test';" Somehow, jobs by snakemake/6.0.5 did not identify the route without this extra line. CoNVaDING is now copied to OGL shared drive.
@@ -21,13 +22,19 @@ module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exi
 #previous version 6.0.5 Aug 2023
 
 WORK_DIR=$PWD
-echo "NGS_genotype_calling.git.in.OGL_resources: '$(head -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
-echo "NGS_genotype_calling.git.in.OGL_resources.date: '$(cat /data/OGL/resources/NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
-cd ~/git/NGS_genotype_calling
-git log | head -n 5 > $WORK_DIR/NGS_genotype_calling.git.log
-cd $WORK_DIR
-echo "NGS_genotype_calling.git: '$(cat NGS_genotype_calling.git.log | head -n 1)'" >> $1
-echo "NGS_genotype_calling.git.date: '$(cat NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
+check=$(echo $@ | grep "dryrun\|dry-run\|unlock" | wc -l)
+if (( $check > 0 )); then
+	echo "Argument contains unlock or dry-run"
+else
+	echo "NGS_genotype_calling.git.in.OGL_resources: '$(head -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
+	echo "NGS_genotype_calling.git.in.OGL_resources.date: '$(cat /data/OGL/resources/NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
+	cd ~/git/NGS_genotype_calling
+	git log | head -n 5 > $WORK_DIR/NGS_genotype_calling.git.log
+	cd $WORK_DIR
+	echo "NGS_genotype_calling.git: '$(cat NGS_genotype_calling.git.log | head -n 1)'" >> $1
+	echo "NGS_genotype_calling.git.date: '$(cat NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
+fi
+
 
 sbcmd="sbatch --cpus-per-task={threads} \
 --mem={cluster.mem} \
