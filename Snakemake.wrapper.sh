@@ -26,13 +26,9 @@ check=$(echo $@ | grep "dryrun\|dry-run\|unlock" | wc -l)
 if (( $check > 0 )); then
 	echo "Argument contains unlock or dry-run"
 else
-	echo "NGS_genotype_calling.git.in.OGL_resources: '$(head -n 1 /data/OGL/resources/NGS_genotype_calling.git.log)'" >> $1
-	echo "NGS_genotype_calling.git.in.OGL_resources.date: '$(cat /data/OGL/resources/NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
 	cd ~/git/NGS_genotype_calling
-	git log | head -n 5 > $WORK_DIR/NGS_genotype_calling.git.log
+	echo "NGS_genotype_calling.git version: '$(git describe --tags --abbrev=0)'" >> $WORK_DIR/$1
 	cd $WORK_DIR
-	echo "NGS_genotype_calling.git: '$(cat NGS_genotype_calling.git.log | head -n 1)'" >> $1
-	echo "NGS_genotype_calling.git.date: '$(cat NGS_genotype_calling.git.log | head -n 3 | tail -n 1 | sed s/"^Date:   "//)'" >> $1
 fi
 
 

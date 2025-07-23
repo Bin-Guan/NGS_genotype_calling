@@ -11,20 +11,19 @@ set -e
 
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
 
-rm -rf coverage/mean.coverage.done.txt
-rm -rf bcmlocus/combine.bcmlocus.done.txt
-rm -rf orf15/combine.orf15.done.txt
-rm -rf mutserve/haplocheck.done.txt
-rm -rf freebayes/freebayes.merge.done.txt
-rm -rf prioritization/dv_fb.merge.done.txt
+rm -rf coverage/mean.coverage.done
+rm -rf bcmlocus/combine.bcmlocus.done
+rm -rf orf15/combine.orf15.done
+rm -rf mutserve/haplocheck.done
+rm -rf freebayes/freebayes.merge.done
+rm -rf prioritization/dv_fb.merge.done
 rm -rf .snakemake
 rm -rf 00log
 rm -rf slurm*.out
 rm -rf sample_bam
-rm -rf deepvariant/deepvariant_phased_glnexusVcf.merge.done.txt
-rm -rf deepvariant/deepvariant.gvcf.merge.done.txt
-rm -rf deepvariant/deepvariantVcf.merge.done.txt
-rm -rf fastqc/multiqc_report/.snakemake_timestamp
+rm -rf deepvariant/deepvariant_phased_glnexusVcf.merge.done
+rm -rf deepvariant/deepvariant.gvcf.merge.done
+rm -rf deepvariant/deepvariantVcf.merge.done
 find fastqc -name ".snakemake_timestamp" -exec rm {} \;
 rm -rf freebayes/chr_split
 rm -rf prioritization/slurm*.out
@@ -42,15 +41,19 @@ ped_file=$(grep "^ped:" $2 | head -n 1 | cut -d"'" -f 2)
 #copy sample names to OGL.ped with the last column as analysis_batch_name
 #first batch adding column names: awk -F"\t" -v batch="$analysis_batch_name" -v dt="$datatype" 'BEGIN{OFS="\t"} NR==1 {print $0, "batch", "data_type"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
 #subsequent batch
-awk -F"\t" -v batch="$analysis_batch_name" -v dt="$ngstype" 'BEGIN{OFS="\t"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
-chgrp OGL /data/OGL/resources/OGLsample/OGL.ped
+# awk -F"\t" -v batch="$analysis_batch_name" -v dt="$ngstype" 'BEGIN{OFS="\t"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
+
+cat /data/OGL/sample_info/master.ped prioritization/$ped_file > /lscratch/$SLURM_JOB_ID/temp.ped
+awk '!a[$0]++' /lscratch/$SLURM_JOB_ID/temp.ped > /data/OGL/sample_info/master.ped
+
+chgrp OGL /data/OGL/sample_info/master.ped
 
 #copy relevant files to resources
 
-cp -l -r prioritization/gemini_tsv_filtered /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
-chgrp --recursive OGL /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
-mv /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP/* /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered
-rm -r /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
+# cp -r prioritization/gemini_tsv_filtered /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
+# chgrp --recursive OGL /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
+# mv /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP/* /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered
+# rm -r /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
 
 #vcf, SV files to resources
 
