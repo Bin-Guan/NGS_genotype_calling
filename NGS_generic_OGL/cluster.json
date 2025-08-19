@@ -11,9 +11,9 @@
 	"clair3":
 	{
 		"partition" : "norm",
-		"mem" : "64g",
+		"mem" : "128g",
 		"time" : "8:00:00",
-		"extra" : "--gres=lscratch:150"
+		"extra" : "--gres=lscratch:200"
 	},
 	"deepvariantS1" :
 	{
@@ -161,7 +161,7 @@
 		"partition" : "norm",
 		"time" : "5:00:00",
 		"mem" : "100g",
-		"extra" : "--gres=lscratch:500"
+		"extra" : "--gres=lscratch:800"
 	},
 	"manta" :
 	{
