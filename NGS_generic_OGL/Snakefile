@@ -1244,9 +1244,9 @@ rule orf15:
 			--clair3_vcf_input /lscratch/$SLURM_JOB_ID/{wildcards.sample}/merge_output.vcf.gz \
 			--vcf_output /lscratch/$SLURM_JOB_ID/{wildcards.sample}/merge_output.pead.vcf.gz \
 			--threads 1
-		bcftools norm --check-ref s --fasta-ref {config[ref_genome]} --output-type u \
-			/lscratch/$SLURM_JOB_ID/{wildcards.sample}/merge_output.pead.vcf.gz \
-			| bcftools annotate --set-id '%CHROM-%POS-%REF-%ALT' --output-type v --no-version \
+		bcftools norm --multiallelics -any --output-type u /lscratch/$SLURM_JOB_ID/{wildcards.sample}/merge_output.pead.vcf.gz \
+			| bcftools norm --check-ref s --fasta-ref {config[ref_genome]} --output-type u \
+			| bcftools annotate --set-id '%CHROM-%POS-%REF-%ALT' --output-type u --no-version \
 			| bcftools norm -d exact --output-type z -o {output.vcf}
 		tabix -f -p vcf {output.vcf}
 		module load {config[annovar_version]}

@@ -22,9 +22,9 @@ module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exi
 #previous version 6.0.5 Aug 2023
 
 WORK_DIR=$PWD
-check=$(echo $@ | grep "dryrun\|dry-run\|unlock" | wc -l)
+check=$(echo $@ | grep "dryrun\|dry-run\|unlock|touch" | wc -l)
 if (( $check > 0 )); then
-	echo "Argument contains unlock or dry-run"
+	echo "Argument contains unlock, dry-run or touch"
 else
 	cd ~/git/NGS_genotype_calling
 	echo "NGS_genotype_calling.git version: '$(git describe --tags --abbrev=0)'" >> $WORK_DIR/$1
