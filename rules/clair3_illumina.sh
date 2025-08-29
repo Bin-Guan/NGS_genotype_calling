@@ -56,7 +56,7 @@ else
 		-SVinputInfo 1 -genomeBuild GRCh38 \
 		-outputDir AutoMap/$sample \
 		-outputFile AutoMap/$sample/$sample.annotated.tsv
-	Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/automap.R AutoMap/$sample/$sample.HomRegions.tsv AutoMap/$sample/$sample.annotated.tsv $(grep "^OGL_Dx_research_genes:" $config | head -n 1 | cut -d"'" -f 2) AutoMap/$sample/$sample.HomRegions.annotated.tsv
+	Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/automap.R AutoMap/$sample/$sample.HomRegions.tsv AutoMap/$sample/$sample.annotated.tsv $(grep "^OGL_Dx_research_genes:" $config | head -n 1 | cut -d"'" -f 2) AutoMap/$sample/$sample.HomRegions.annot.tsv
 	rm AutoMap/$sample/$sample.annotated.tsv
 fi
 

@@ -22,7 +22,7 @@ module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exi
 #previous version 6.0.5 Aug 2023
 
 WORK_DIR=$PWD
-check=$(echo $@ | grep "dryrun\|dry-run\|unlock|touch" | wc -l)
+check=$(echo $@ | grep "dryrun\|dry-run\|unlock\|touch" | wc -l)
 if (( $check > 0 )); then
 	echo "Argument contains unlock, dry-run or touch"
 else
@@ -54,7 +54,7 @@ else
 	header=$(zcat $fastq1 | head -1)
 	id=$(echo $header | cut -d: -f 3,4 | sed 's/\:/\./g')
 	sm=$(echo $filename | cut -d_ -f 1-2 | sed 's/\-/\_/g' | sed 's/_/x/')
-	echo "$sm,$filename,@RG\\\tID:$id"_"$sm\\\tSM:$sm\\\tLB:$lib"_"$sm\\\tPL:ILLUMINA" >> metadata_file.csv
+	echo "$sm,$filename,@RG\\\tID:$id"_"$sm\\\tSM:$sm\\\tLB:$lib"_"$sm\\\tPL:ILLUMINA" >> $metadata_file
 	done
 fi
 #if sample name has underscore, then sm=$(echo $filename | cut -d_ -f 1,2)

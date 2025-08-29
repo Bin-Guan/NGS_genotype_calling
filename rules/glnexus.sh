@@ -5,6 +5,7 @@
 #SBATCH --time=4:0:0
 
 #Took 12 min, 52G mem, 8G lscratch for a GS trio.
+#DeepVariant gvcf files need to be in the gvcf folder
 set -e
 
 config_file=$1 # exome/es/wes or genome/gs/wgs

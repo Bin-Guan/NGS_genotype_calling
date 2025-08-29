@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --gres=lscratch:10
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=8g
 #SBATCH --time=2:00:00
 
@@ -35,25 +35,49 @@ rm -rf prioritization/temp
 echo "File deletion task done"
 
 module load R/4.3.0
-analysis_batch_name=$(grep "^analysis_batch_name:" $1 | head -n 1 | cut -d"'" -f 2)
-ngstype=$(grep "^datatype:" $2 | head -n 1 | cut -d"'" -f 2)
-ped_file=$(grep "^ped:" $2 | head -n 1 | cut -d"'" -f 2)
-#copy sample names to OGL.ped with the last column as analysis_batch_name
-#first batch adding column names: awk -F"\t" -v batch="$analysis_batch_name" -v dt="$datatype" 'BEGIN{OFS="\t"} NR==1 {print $0, "batch", "data_type"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
+analysis_batch_name=$(grep "^analysis_batch_name:" $calling_configure_file | head -n 1 | cut -d"'" -f 2)
+ngstype=$(grep "^datatype:" $variantPrioritization_configure_file | head -n 1 | cut -d"'" -f 2)
+ped_file=$(grep "^ped:" $variantPrioritization_configure_file | head -n 1 | cut -d"'" -f 2)
+
+export ngstype
+
+#copy sample names to OGL.ped adding datatype and analysis_batch_name
+awk -F"\t" -v batch="$analysis_batch_name" -v dt="$ngstype" 'BEGIN{OFS="\t"} NR==1 {print "NGS_type", "batch", $0} NR>1 {print dt, batch, $0}' \
+ prioritization/$ped_file | cat /data/OGL/sample_info/master.v3.ped - > /lscratch/$SLURM_JOB_ID/temp.ped
+awk '!a[$0]++' /lscratch/$SLURM_JOB_ID/temp.ped > /data/OGL/sample_info/master.v3.ped
+
 #subsequent batch
 # awk -F"\t" -v batch="$analysis_batch_name" -v dt="$ngstype" 'BEGIN{OFS="\t"} NR>1 {print $0, batch, dt}' prioritization/$ped_file >> /data/OGL/resources/OGLsample/OGL.ped
 
-cat /data/OGL/sample_info/master.ped prioritization/$ped_file > /lscratch/$SLURM_JOB_ID/temp.ped
-awk '!a[$0]++' /lscratch/$SLURM_JOB_ID/temp.ped > /data/OGL/sample_info/master.ped
-
-chgrp OGL /data/OGL/sample_info/master.ped
+chgrp OGL /data/OGL/sample_info/master.ped #what happens for another user?
 
 #copy relevant files to resources
 
-# cp -r prioritization/gemini_tsv_filtered /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
-# chgrp --recursive OGL /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
-# mv /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP/* /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered
-# rm -r /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
+find prioritization/gemini_tsv_filtered/ -name "*.tsv" | parallel -j 8 'gzip -c {} \
+ > /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/v3_temp/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/v3_temp/$(echo {/} | cut -d. -f 1).tsv.gz' 
+
+find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/v3_temp/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/v3_temp/$(echo {/} | cut -d. -f 1).tsv.gz' 
+
+#chgrp --recursive OGL /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
+#mv /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP/* /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/v3
+#rm -r /data/OGL/resources/GeneSearch/genome/gemini_tsv_filtered/temp$TIMESTAMP
+
+find clinSV/ -name "*.clinsv.SV-CNV.PASS.vcf.gz*" -exec cp {} /data/OGL/resources/clinSV/genome \;
+find clinSV/ -name "*.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz*" -exec cp {} /data/OGL/resources/clinSV/genome \;
+find clinSV/ -name "*.clinSV.PASS.annotated.tsv.gz" -exec cp {} /data/OGL/resources/clinSV/genome \;
+find clinSV/ -name "*.clinSV.RARE_PASS_GENE.annotated.tsv.gz" -exec cp {} /data/OGL/resources/clinSV/genome \;
+find clinSV/ -name "*.clinSV.RARE_PASS_GENE.eG.tsv" -exec cp {} /data/OGL/resources/clinSV/genome \;
+
+cp -a deepvariant/gvcf/* /data/OGL/resources/OGLsample/genome_dv_gvcf
+cp -a deepvariant/vcf/*.dv.filtered.vcf.gz* /data/OGL/resources/OGLsample/genome_dv_vcf
+cp 
+
+
+# ( cat $CONTIGFILE | parallel -C "\t" -j 21 --tmpdir $WORK_DIR --eta --halt 2 --line-buffer \
+		 	# --tag "whatshap phase --reference $WORK_DIR/$(basename {config[ref_genome]}) \
+			# --indels --ignore-read-groups $WORK_DIR/filtered/{{2}}.filtered.vcf.gz $WORK_DIR/{wildcards.sample}.markDup.bam \
+			# | bgzip -f --threads $(({threads}-10)) > $WORK_DIR/phased/{{2}}.phased.vcf.gz" \
+		# ) && echo "whatshap on chr completed" || exit 7
 
 #vcf, SV files to resources
 
