@@ -14,7 +14,7 @@ markDup: 'TRUE' # TRUE, FALSE, should markDup for optical dup in PCR-free genome
 cram: 'TRUE' # TRUE to convert bam to cram, values other than TRUE will not convert. #Keep bam for panel and exome if addtional analyses are anticipated
 #recal_bam: 'FALSE' #TRUE to merge chr bams to single sample recalibrated bam
 multiqc: 'TRUE' # will run only if True
-picardQC: 'TRUE'
+picardQC: 'FALSE'
 CoNVaDING: 'FALSE'
 SCRAMble: 'TRUE' #will run only if TRUE
 GATKgvcf: 'FALSE' # will run only if TRUE
