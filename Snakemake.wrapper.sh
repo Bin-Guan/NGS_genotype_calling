@@ -15,13 +15,24 @@
 
 #git log | head -n 5 > /data/OGL/resources/NGS_genotype_calling.git.log
 
-mkdir -p 00log
+mkdir -p 00log prioritization
+find . -maxdepth 1 -type f -name '*.ped' -exec mv {} prioritization \;
+find . -maxdepth 1 -type f -name '*config_variant_prioritization*.yaml' -exec mv {} prioritization \;
+
 module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exit 1
 #snakemake/7.19.1 1/3/2025 updated this to config_generic.yaml
 #snakemake/6.8.2 act a little bit weird. Line no. is Snakefile messed up. 3/1/2022
 #previous version 6.0.5 Aug 2023
 
 WORK_DIR=$PWD
+if (( $(echo $WORK_DIR | grep "/data/OGL" | wc -l) > 0 )); then
+ if [[ $(ls -l $WORK_DIR | tail -n +2 | cut -d" " -f 4 | sort -u)  == "OGL" ]]; then
+  echo "groupownership is OK"
+ else
+  chgrp --recursive OGL $WORK_DIR
+ fi
+fi
+
 check=$(echo $@ | grep "dryrun\|dry-run\|unlock\|touch" | wc -l)
 if (( $check > 0 )); then
 	echo "Argument contains unlock, dry-run or touch"
