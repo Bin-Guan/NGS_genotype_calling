@@ -60,17 +60,19 @@ case "${ngstype^^}" in
 	"EXOME"|"WES"|"ES")
 		ngstype="exome"
 		find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz'
+		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/exome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/exome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
 		find deepvariant/gvcf/ -name "*.vcf.gz*" -exec cp {} /data/OGL/resources/OGLsample/genome_dv_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_dv_gvcf/{/} \;
 		find deepvariant/vcf/ -name "*.dv.filtered.vcf.gz*" -exec cp {} /data/OGL/resources/OGLsample/genome_dv_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_dv_vcf/{/} \;
 		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_gvcf/{/}'
 		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_vcf/{/}'
 		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_freebayes_vcf/{/}'
-		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/exome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/exome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
 		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
+		find scramble_anno -name "*.tsv" | parallel -j 8 'cp {} /data/OGL/resources/scramble/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
 		;;
 	*)
 		ngstype="genome"
 		find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz'
+		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/genome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/genome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
 		find clinSV/ -name "*.clinsv.SV-CNV.PASS.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
 		find clinSV/ -name "*.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
 		find clinSV/ -name "*.clinSV.RARE_PASS_GENE.annotated.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
@@ -80,7 +82,6 @@ case "${ngstype^^}" in
 		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_gvcf/{/}'
 		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_vcf/{/}'
 		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_freebayes_vcf/{/}'
-		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/genome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/genome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
 		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
 		find jax-cnv -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/jaxCNV/genome && chgrp OGL /data/OGL/resources/jaxCNV/genome/{/}'
 		find orf15/vcf -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/orf15_clair3 && chgrp OGL /data/OGL/resources/OGLsample/orf15_clair3/{/}'

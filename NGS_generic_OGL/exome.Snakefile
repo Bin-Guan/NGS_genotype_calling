@@ -100,7 +100,7 @@ rule all:
 		# expand('CRESTanno/{sample}.predSV.xlsx', sample=list(SAMPLE_LANEFILE.keys())) if config['CREST'] == 'TRUE' else 'dummy.txt',
 		expand('gvcfs/{sample}.g.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())) if config['GATKgvcf'] == 'TRUE' else 'dummy.txt',
 		# expand('recal_bam/{sample}.recal.bam', sample=list(SAMPLE_LANEFILE.keys())) if config['recal_bam'] == 'TRUE' else 'dummy.txt',
-		expand('bam/{sample}.cram', sample=list(SAMPLE_LANEFILE.keys())) if config['cram'] == 'TRUE' else expand('bam/{sample}.bam', sample=list(SAMPLE_LANEFILE.keys())),
+		expand('cram/{sample}.cram', sample=list(SAMPLE_LANEFILE.keys())) if config['cram'] == 'TRUE' else expand('bam/{sample}.bam', sample=list(SAMPLE_LANEFILE.keys())),
 		# 'GATK_metrics/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
 		'fastqc/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
 		# expand('picardQC/{sample}.insert_size_metrics.txt', sample=list(SAMPLE_LANEFILE.keys())) if config['picardQC'] == 'TRUE' else 'dummy.txt',
@@ -480,8 +480,8 @@ rule bam_to_cram:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
-		cram = 'bam/{sample}.cram',
-		crai = 'bam/{sample}.crai'
+		cram = 'cram/{sample}.cram',
+		crai = 'cram/{sample}.cram.crai'
 	threads:
 		8
 	shell:
@@ -780,17 +780,14 @@ rule merge_clair3:
 		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
 		case "{input.vcf}" in
 			*\ *)
-				bcftools merge --merge none --missing-to-ref --output-type u --threads {threads} {input.vcf} \
-					| bcftools annotate --threads {threads} --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --no-version - -Ou \
-					| bcftools +fill-tags - -Ov -- -t AC,AC_Hom,AC_Het,AN,AF \
+				bcftools merge --merge none --missing-to-ref --output-type v --threads {threads} {input.vcf} \
 					| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
-					| bgzip -f > clair3/{config[analysis_batch_name]}.clr3.vcf.gz
+					| bcftools +fill-tags - -Oz -- -t AC,AC_Hom,AC_Het,AN,AF \
+					> clair3/{config[analysis_batch_name]}.clr3.vcf.gz
 				tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.vcf.gz
 				;;
 			*)
-				bcftools +fill-tags {input.vcf} -Ou -- -t AC,AC_Hom,AC_Het,AN,AF \
-					 | bcftools annotate --threads {threads} --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --no-version -\
-					  -Oz -o clair3/{config[analysis_batch_name]}.clr3.vcf.gz
+				bcftools +fill-tags {input.vcf} -Oz -- -t AC,AC_Hom,AC_Het,AN,AF > clair3/{config[analysis_batch_name]}.clr3.vcf.gz
 				tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.vcf.gz
 				;;
 		esac

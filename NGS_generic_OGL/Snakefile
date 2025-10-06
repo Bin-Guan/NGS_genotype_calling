@@ -550,7 +550,7 @@ rule bam_to_cram:
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
 	output:
 		cram = 'cram/{sample}.cram',
-		crai = 'cram/{sample}.crai'
+		crai = 'cram/{sample}.cram.crai'
 	threads:
 		16
 	shell:
@@ -1637,25 +1637,23 @@ rule clinsv_anno:
 	shell:
 		"""
 		if [[ $(module list 2>&1 | grep "annotsv" | wc -l) -lt 1 ]]; then module load {config[annotsv_version]}; fi
-		project_folder=/lscratch/$SLURM_JOB_ID/clinSV/{wildcards.sample}/
+		project_folder=/lscratch/$SLURM_JOB_ID/clinSV/{wildcards.sample}
 		mkdir -p $project_folder
 		AnnotSV -SVinputFile {input.vcf_pass} \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
 			-outputDir $project_folder \
 			-outputFile {wildcards.sample}.clinSV.PASS.annotated.tsv
-		gzip $project_folder/{wildcards.sample}.clinSV.PASS.annotated.tsv
-		cp $project_folder/{wildcards.sample}.clinSV.PASS.annotated.tsv.gz clinSV/{wildcards.sample}
+		gzip -c $project_folder/{wildcards.sample}.clinSV.PASS.annotated.tsv > clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.PASS.annotated.tsv.gz
 		AnnotSV -SVinputFile {input.vcf_rare} \
 			-SVinputInfo 1 -genomeBuild {config[genomeBuild]} \
 			-outputDir $project_folder \
 			-outputFile {wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
-		gzip $project_folder/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv
-		cp $project_folder/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv clinSV/{wildcards.sample}
+		gzip -c $project_folder/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv > clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.annotated.tsv.gz
 		if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/clinsv_author_excel.R \
 			{config[OGL_Dx_research_genes]} \
 			{input.xlsx} \
-			clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv \
+			clinSV/{wildcards.sample}/{wildcards.sample}.clinSV.RARE_PASS_GENE.eG.tsv.gz \
 			{output.xlsx}
 		"""
 
