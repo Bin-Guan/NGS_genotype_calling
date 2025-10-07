@@ -367,12 +367,14 @@ rule multiqc_fastqc:
 	input:
 		expand('fastqc/{sample}', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		directory('fastqc/multiqc_report')
+		'fastqc/multiqc.done'
 	shell:
 		"""
 		module load multiqc/1.14
-		multiqc -f -o {output} fastqc/
+		multiqc -f -o fastqc/multiqc_report_{config[analysis_batch_name]} fastqc/
+		touch {output}
 		"""
+#output: directory('fastqc/multiqc_report')
 
 rule picard_alignmentQC:
 #insert size and alignment metrics
@@ -463,7 +465,7 @@ rule mean_coverage:
 		'coverage/mean.coverage.done'
 	shell:
 		"""
-		echo -e "sample\tlength\tmean" > coverage/{config[analysis_batch_name]}.mean.coverage.summary.tsv
+		echo -e "sample\tlength\tmean\ton_target_pct" > coverage/{config[analysis_batch_name]}.mean.coverage.summary.tsv
 		for file in {input}; do
 			filename=$(basename $file)
 			sm=$(echo $filename | sed 's/.md.mosdepth.summary.txt//')
@@ -587,7 +589,7 @@ rule scramble_annotation:
 			tail -n +2 {input.deletion} | awk -F"\t" 'BEGIN{{OFS="\t"}} {{print $1,$2,$3,"DEL"}}' > {input.deletion}.bed
 			AnnotSV -genomeBuild {config[genomeBuild]} -SVinputFile {input.deletion}.bed -SVinputInfo 0 -svtBEDcol 4 -outputFile {output.del_anno}.temp
 			Rscript /home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/scramble_del_edit.R {output.del_anno}.temp.tsv {config[scrambleDELdb]} {output.del_anno}
-			rm {output.del_anno}.temp.tsv
+			rm {output.del_anno}.temp.tsv {input.deletion}.bed
 		fi
 		"""
 #Try this strategy,if not working well, consider split by chr as in the GATK.
@@ -1158,6 +1160,11 @@ rule combine_bcmlocus:
 		for file in {input}; do
 			tail -n +2 $file >> bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv
  		done
+		if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
+		Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/bcmlocus_filter.R \
+			bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv \
+			bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.xlsx
+		rm bcmlocus/{config[analysis_batch_name]}.bcmlocus.all.variant.tsv
 		touch {output}
 		"""
 

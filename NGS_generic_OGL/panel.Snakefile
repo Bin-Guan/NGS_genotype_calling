@@ -336,12 +336,14 @@ rule multiqc_fastqc:
 	input:
 		expand('fastqc/{sample}', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		directory('fastqc/multiqc_report')
+		'fastqc/multiqc.done'
 	shell:
 		"""
-		module load multiqc
-		multiqc -f -o {output} fastqc/
+		module load multiqc/1.14
+		multiqc -f -o fastqc/multiqc_report_{config[analysis_batch_name]} fastqc/
+		touch {output}
 		"""
+#output: directory('fastqc/multiqc_report')
 
 # rule picard_mark_dups:
 # # Mark duplicate reads

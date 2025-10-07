@@ -12,7 +12,8 @@ set -e
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
 
 
-module load R/4.3.0 parallel
+#module load R/4.3.0 
+module load parallel
 analysis_batch_name=$(grep "^analysis_batch_name:" $calling_configure_file | head -n 1 | cut -d"'" -f 2)
 ngstype=$(grep "^datatype:" $variantPrioritization_configure_file | head -n 1 | cut -d"'" -f 2)
 ped_file=$(grep "^ped:" $variantPrioritization_configure_file | head -n 1 | cut -d"'" -f 2)
@@ -61,13 +62,13 @@ case "${ngstype^^}" in
 		ngstype="exome"
 		find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz'
 		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/exome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/exome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
-		find deepvariant/gvcf/ -name "*.vcf.gz*" -exec cp {} /data/OGL/resources/OGLsample/genome_dv_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_dv_gvcf/{/} \;
-		find deepvariant/vcf/ -name "*.dv.filtered.vcf.gz*" -exec cp {} /data/OGL/resources/OGLsample/genome_dv_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_dv_vcf/{/} \;
-		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_gvcf/{/}'
-		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_vcf/{/}'
-		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_freebayes_vcf/{/}'
-		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
-		find scramble_anno -name "*.tsv" | parallel -j 8 'cp {} /data/OGL/resources/scramble/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
+		find deepvariant/gvcf/ -type f -name "*.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_gvcf" {} \;
+		find deepvariant/vcf/ -type f -name "*.dv.phased.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_vcf" {} \;
+		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/exome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/exome_clair3_gvcf/{/}'
+		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/exome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/exome_clair3_vcf/{/}'
+		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/exome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/exome_freebayes_vcf/{/}'
+		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/exome && chgrp OGL /data/OGL/resources/manta/exome/{/}'
+		find scramble_anno -name "*.tsv" | parallel -j 8 'cp {} /data/OGL/resources/scramble/exome/ && chgrp OGL /data/OGL/resources/scramble/exome/{/}'
 		;;
 	*)
 		ngstype="genome"
@@ -77,14 +78,15 @@ case "${ngstype^^}" in
 		find clinSV/ -name "*.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
 		find clinSV/ -name "*.clinSV.RARE_PASS_GENE.annotated.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
 		find clinSV/ -name "*.clinSV.RARE_PASS_GENE.eG.tsv" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
-		find deepvariant/gvcf/ -name "*.vcf.gz*" -exec cp {} /data/OGL/resources/OGLsample/genome_dv_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_dv_gvcf/{/} \;
-		find deepvariant/vcf/ -name "*.dv.filtered.vcf.gz*" -exec cp {} /data/OGL/resources/OGLsample/genome_dv_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_dv_vcf/{/} \;
+		find deepvariant/gvcf/ -type f -name "*.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_gvcf" {} \;
+		find deepvariant/vcf/ -type f -name "*.dv.filtered.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_vcf" {} \;
 		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_gvcf/{/}'
 		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_vcf/{/}'
 		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_freebayes_vcf/{/}'
 		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
 		find jax-cnv -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/jaxCNV/genome && chgrp OGL /data/OGL/resources/jaxCNV/genome/{/}'
 		find orf15/vcf -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/orf15_clair3 && chgrp OGL /data/OGL/resources/OGLsample/orf15_clair3/{/}'
+		find scramble_anno -name "*.tsv" | parallel -j 8 'cp {} /data/OGL/resources/scramble/genome_mei/ && chgrp OGL /data/OGL/resources/scramble/genome_mei/{/}'
 		;;
 esac
 
@@ -92,15 +94,18 @@ rm -rf coverage/mean.coverage.done
 rm -rf bcmlocus/combine.bcmlocus.done
 rm -rf orf15/combine.orf15.done
 rm -rf mutserve/haplocheck.done
-rm -rf freebayes/freebayes.merge.done
+rm -rf freebayes/freebayes.merge.done* 
 rm -rf prioritization/dv_fb.merge.done
+rm -rf fastqc/multiqc.done
 rm -rf .snakemake
 rm -rf 00log
 rm -rf slurm*.out
 rm -rf sample_bam
 rm -rf deepvariant/deepvariant_phased_glnexusVcf.merge.done
+rm -rf deepvariant/deepvariant.glnexus.phased.merge.done
 rm -rf deepvariant/deepvariant.gvcf.merge.done
 rm -rf deepvariant/deepvariantVcf.merge.done
+rm -rf clair3/clair3.merge.done
 find fastqc -name ".snakemake_timestamp" -exec rm {} \;
 rm -rf freebayes/chr_split
 rm -rf prioritization/slurm*.out
