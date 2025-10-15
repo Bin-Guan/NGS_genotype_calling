@@ -26,11 +26,7 @@ module load $(grep "^snakemake_version:" $1 | head -n 1 | cut -d"'" -f 2) || exi
 
 WORK_DIR=$PWD
 if (( $(echo $WORK_DIR | grep "/data/OGL" | wc -l) > 0 )); then
- if [[ $(ls -l $WORK_DIR | tail -n +2 | cut -d" " -f 4 | sort -u)  == "OGL" ]]; then
-  echo "group ownership is OK"
- else
-  chgrp --recursive OGL $WORK_DIR
- fi
+ find $WORK_DIR -type f ! -group OGL -print -exec chgrp OGL -- {} +
 fi
 
 check=$(echo $@ | grep "dryrun\|dry-run\|unlock\|touch" | wc -l)
@@ -121,11 +117,7 @@ case "${ngstype^^}" in
 esac
 
 if (( $(echo $WORK_DIR | grep "/data/OGL" | wc -l) > 0 )); then
- if [[ $(find $WORK_DIR -type f -exec stat -c '%G' {} \; | sort -u)  == "OGL" ]]; then
-  echo "group ownership is OK"
- else
-  chgrp --recursive OGL $WORK_DIR
- fi
+ find $WORK_DIR -type f ! -group OGL -print -exec chgrp OGL -- {} +
 fi
 
 #replaced "parallel=4" with "res=1"

@@ -52,42 +52,127 @@ find prioritization/gemini_tsv_filtered/ -name "*.tsv" | parallel -j 8 'gzip -c 
 #vcf, SV files to resources
 
 case "${ngstype^^}" in
-	"PANEL")
-		find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/panel/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/panel/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz' 
-		;;
-	"AMPLICON"|"AMP")
-		echo "Amplicon, do not retain files to resources"
-		;;
-	"EXOME"|"WES"|"ES")
-		ngstype="exome"
-		find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz'
-		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/exome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/exome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
-		find deepvariant/gvcf/ -type f -name "*.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_gvcf" {} \;
-		find deepvariant/vcf/ -type f -name "*.dv.phased.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_vcf" {} \;
-		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/exome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/exome_clair3_gvcf/{/}'
-		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/exome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/exome_clair3_vcf/{/}'
-		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/exome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/exome_freebayes_vcf/{/}'
-		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/exome && chgrp OGL /data/OGL/resources/manta/exome/{/}'
-		find scramble_anno -name "*.tsv" | parallel -j 8 'cp {} /data/OGL/resources/scramble/exome/ && chgrp OGL /data/OGL/resources/scramble/exome/{/}'
-		;;
-	*)
-		ngstype="genome"
-		find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz'
-		cp prioritization/$analysis_batch_name.gt3.anno3.dvg.vcf.gz* /data/OGL/resources/OGLsample/annotatedVCF/genome && chgrp OGL /data/OGL/resources/OGLsample/annotatedVCF/genome/$analysis_batch_name.gt3.anno3.dvg.vcf.gz*
-		find clinSV/ -name "*.clinsv.SV-CNV.PASS.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
-		find clinSV/ -name "*.clinsv.SV-CNV.RARE_PASS_GENE.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
-		find clinSV/ -name "*.clinSV.RARE_PASS_GENE.annotated.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
-		find clinSV/ -name "*.clinSV.RARE_PASS_GENE.eG.tsv" | parallel -j 8 'cp {} /data/OGL/resources/clinSV/genome/{/} && chgrp OGL /data/OGL/resources/clinSV/genome/{/}'
-		find deepvariant/gvcf/ -type f -name "*.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_gvcf" {} \;
-		find deepvariant/vcf/ -type f -name "*.dv.filtered.vcf.gz*" -execdir sh -c 'cp -- "$1" "$0/" && chgrp OGL -- "$0/$1"' "/data/OGL/resources/OGLsample/${ngstype}_dv_vcf" {} \;
-		find clair3/gvcf -name "*.gvcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_gvcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_gvcf/{/}'
-		find clair3/vcf -name "*.filtered.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_clair3_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_clair3_vcf/{/}'
-		find freebayes/vcf -name "*.phased.vcf.gz*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/genome_freebayes_vcf && chgrp OGL /data/OGL/resources/OGLsample/genome_freebayes_vcf/{/}'
-		find manta -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/manta/genome && chgrp OGL /data/OGL/resources/manta/genome/{/}'
-		find jax-cnv -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/jaxCNV/genome && chgrp OGL /data/OGL/resources/jaxCNV/genome/{/}'
-		find orf15/vcf -name "*.*" | parallel -j 8 'cp {} /data/OGL/resources/OGLsample/orf15_clair3 && chgrp OGL /data/OGL/resources/OGLsample/orf15_clair3/{/}'
-		find scramble_anno -name "*.tsv" | parallel -j 8 'cp {} /data/OGL/resources/scramble/genome_mei/ && chgrp OGL /data/OGL/resources/scramble/genome_mei/{/}'
-		;;
+ "PANEL")
+  find prioritization/gemini_tsv_filtered/ -name "*.tsv.gz" | parallel -j 8 'cp {} /data/OGL/resources/GeneSearch/panel/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz && chgrp OGL /data/OGL/resources/GeneSearch/panel/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz' 
+  ;;
+ "AMPLICON"|"AMP")
+  echo "Amplicon, do not retain files to resources"
+  ;;
+ "EXOME"|"WES"|"ES")
+  ngstype="exome"
+  find prioritization/gemini_tsv_filtered/ -type f -name "*.tsv.gz" | parallel -j 8 'destination_file="/data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find prioritization/ -type f -name "*.gt3.anno3.dvg.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/annotatedVCF/$ngstype/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find deepvariant/gvcf/ -type f -name "*.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_dv_gvcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find deepvariant/vcf/ -type f -name "*.dv.phased.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_dv_vcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  ' # These are hard-filtered and phased.
+  find clair3/gvcf -type f -name "*.gvcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_clair3_gvcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find clair3/vcf -type f -name "*.filtered.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_clair3_vcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find freebayes/vcf -type f -name "*.phased.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_freebayes_vcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find manta -type f -name "*.*" | parallel -j 8 'destination_file="/data/OGL/resources/manta/${ngstype}/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find scramble_anno -type f -name "*.tsv" | parallel -j 8 'destination_file="/data/OGL/resources/scramble/exome/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  ;;
+ *)
+  ngstype="genome"
+  find prioritization/gemini_tsv_filtered/ -type f -name "*.tsv.gz" | parallel -j 8 'destination_file="/data/OGL/resources/GeneSearch/$ngstype/gemini_tsv_filtered/$(echo {/} | cut -d. -f 1).tsv.gz"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find prioritization/ -type f -name "*.gt3.anno3.dvg.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/annotatedVCF/$ngstype/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find clinSV/ -type f \( -iname '*.clinsv.sv-cnv.pass.vcf.gz*' \
+  -o -iname '*.clinsv.sv-cnv.rare_pass_gene.vcf.gz*' \
+  -o -iname '*.clinsv.rare_pass_gene.annotated.tsv.gz' \
+  -o -iname '*.clinSV.RARE_PASS_GENE.eG.tsv' \) \
+  | parallel -j 8 'destination_file="/data/OGL/resources/clinSV/genome/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find deepvariant/gvcf/ -type f -name "*.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_dv_gvcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find deepvariant/vcf/ -type f -name "*.dv.filtered.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_dv_vcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  ' # these are hard-filtered un-phased.
+  find clair3/gvcf -type f -name "*.gvcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_clair3_gvcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find clair3/vcf -type f -name "*.filtered.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_clair3_vcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find freebayes/vcf -type f -name "*.phased.vcf.gz*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/${ngstype}_freebayes_vcf/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find manta -type f -name "*.*" | parallel -j 8 'destination_file="/data/OGL/resources/manta/${ngstype}/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find jax-cnv -type f -name "*.*" | parallel -j 8 'destination_file="/data/OGL/resources/jaxCNV/genome/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find orf15/vcf -type f -name "*.*" | parallel -j 8 'destination_file="/data/OGL/resources/OGLsample/orf15_clair3/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  find scramble_anno -type f -name "*.tsv" | parallel -j 8 'destination_file="/data/OGL/resources/scramble/genome_mei/{/}"
+  cp {} "$destination_file"
+  grp=$(stat -c %G -- "$destination_file" 2>/dev/null)
+  [ "$grp" = "OGL" ] || chgrp OGL -- "$destination_file"
+  '
+  ;;
 esac
 
 rm -rf coverage/mean.coverage.done
@@ -113,6 +198,10 @@ rm -rf prioritization/.snakemake
 rm -rf prioritization/00log
 rm -rf prioritization/madeline/madeline.done
 rm -rf prioritization/temp
+rm -rf prioritization/*.gt3.anno3.dvg.vcf.gz*
+rm -rf prioritization/*.gt3.anno3.dvg.vcf.gz*
+rm -rf prioritization/*.gemini.db
+
 #rm -rf old_bam bam cram
 echo "File deletion task done"
 
