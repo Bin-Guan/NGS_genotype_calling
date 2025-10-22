@@ -98,20 +98,21 @@ wildcard_constraints:
 rule all:
 	input:
 		# expand('CRESTanno/{sample}.predSV.xlsx', sample=list(SAMPLE_LANEFILE.keys())) if config['CREST'] == 'TRUE' else 'dummy.txt',
-		expand('gvcfs/{sample}.g.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())) if config['GATKgvcf'] == 'TRUE' else 'dummy.txt',
+		expand('gvcfs/{sample}.g.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())) if 'GATKgvcf' in config['output_type'] else 'dummy.txt',
 		# expand('recal_bam/{sample}.recal.bam', sample=list(SAMPLE_LANEFILE.keys())) if config['recal_bam'] == 'TRUE' else 'dummy.txt',
-		expand('cram/{sample}.cram', sample=list(SAMPLE_LANEFILE.keys())) if config['cram'] == 'TRUE' else expand('bam/{sample}.bam', sample=list(SAMPLE_LANEFILE.keys())),
+		expand('cram/{sample}.cram', sample=list(SAMPLE_LANEFILE.keys())) if 'cram' in config['output_type'] else expand('bam/{sample}.bam', sample=list(SAMPLE_LANEFILE.keys())),
 		# 'GATK_metrics/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
-		'fastqc/multiqc_report' if config['multiqc'] == 'TRUE' else 'dummy.txt',
+		'fastqc/multiqc.done' if 'multiqc' in config['output_type'] else 'dummy.txt',
 		# expand('picardQC/{sample}.insert_size_metrics.txt', sample=list(SAMPLE_LANEFILE.keys())) if config['picardQC'] == 'TRUE' else 'dummy.txt',
 		#'deepvariant/deepvariantVcf.merge.done' if config['deepvariant'] == 'TRUE' else 'dummy.txt',
-		'prioritization/dv_fb.merge.done' if config['freebayes_phasing'] == 'TRUE' else 'dummy.txt',
-		'clair3/clair3.merge.done',
-		'coverage/mean.coverage.done' if config['coverage'] == 'TRUE' else 'dummy.txt',
-		expand('manta/manta.{sample}.annotated.tsv', sample=list(SAMPLE_LANEFILE.keys())),
-		expand('scramble_anno/{sample}.scramble.tsv', sample=list(SAMPLE_LANEFILE.keys())) if config['SCRAMble'] == 'TRUE' else 'dummy.txt',
-		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())),
-		'bcmlocus/combine.bcmlocus.done'
+		'prioritization/dv_fb.merge.done' if 'freebayes' in config['output_type'] else 'dummy.txt',
+		'deepvariant/deepvariant_phased_glnexusVcf.merge.done' if 'deepvariant' in config['output_type'] else 'dummy.txt',
+		'clair3/clair3.merge.done' if 'clair3' in config['output_type'] else 'dummy.txt',
+		'coverage/mean.coverage.done' if 'coverage' in config['output_type'] else 'dummy.txt',
+		expand('manta/manta.{sample}.annotated.tsv', sample=list(SAMPLE_LANEFILE.keys())) if 'manta' in config['output_type'] else 'dummy.txt',
+		expand('scramble_anno/{sample}.scramble.tsv', sample=list(SAMPLE_LANEFILE.keys())) if 'SCRAMble' in config['output_type'] else 'dummy.txt',
+		expand('AutoMap/{sample}/{sample}.HomRegions.annot.tsv', sample=list(SAMPLE_LANEFILE.keys())) if 'AutoMap' in config['output_type'] else 'dummy.txt',
+		'bcmlocus/combine.bcmlocus.done' if 'bcmlocus' in config['output_type'] else 'dummy.txt'
 
 
 localrules: dummy
@@ -913,12 +914,12 @@ rule dv_whatshap:
 		"""
 
 localrules: merge_glnexus_phased_vcf
-rule merge_glnexus_phased_vcf:
+rule merge_deepvariant_glnexusVcf:
 	input:
 		vcf = expand('deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
 		tbi = expand('deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
-		'deepvariant/deepvariant.glnexus.phased.merge.done'
+		'deepvariant/deepvariant_phased_glnexusVcf.merge.done'
 	threads: 8
 	shell:
 		"""
@@ -942,7 +943,7 @@ localrules: merge_dv_fb_vcfs
 rule merge_dv_fb_vcfs:
 	input:
 		'deepvariant/deepvariantVcf.merge.done',
-		'deepvariant/deepvariant.glnexus.phased.merge.done',
+		'deepvariant/deepvariant_phased_glnexusVcf.merge.done',
 		'freebayes/freebayes.merge.done.txt'
 	output:
 		'prioritization/dv_fb.merge.done'

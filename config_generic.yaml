@@ -6,29 +6,19 @@ gt_call_version: 'gt3' # version will be in the final vcf file.
 genomeBuild: 'GRCh38' #GRCh37 (hg19), GRCh38 (hg38), or any other values to use ref_genome and bwa-mem2_ref below.
 ped: '' #Can leave as blank ''. Only for ChrX CNV, has to have ped extenstion, header if present has to starts with #, ie miseq0626_0719.ped
 inputFileType: 'fastq' # single_lane_fastq, fastq, bam or cram (no-realignment, cannot mix bam with cram, files in old_bam directory), bam-realign, cram-realign (can mix bam & cram; files in old_bam directory).
+output_type: ['bam', 'cram', 'multiqc', 'freebayes', 'deepvariant', 'clair3', 'coverage', 'mutserve', 'manta', 'SCRAMble', 'AutoMap', 'bcmlocus', 'jax-cnv', 'clinSV', 'orf15'] #list, case sensitive, delete cram, vcf, other_tools if creating bam files only. Other options: 'GATKgvcf', 'picardQC'
 eGbed: '/data/OGL/resources/bed/OGLv1.GRCh38.sorted.bed' # bed file is used for coverage of eyeGene
 bed: '/data/OGL/resources/bed/xgenV2_OGLv1.hg38.bed'
 padded_bed: '/data/OGL/resources/bed/xgenV2_OGLv1.500padded.hg38.bed' #for deepvariant variant calling in exome & panel
 real_bed: 'FALSE' # TRUE or FALSE, if a real bed is provided, use the bed above for freebayes filtering. If not real_bed, then the bed above is used for deepvariant, but not for freebayes filtering.
 markDup: 'TRUE' # TRUE, FALSE, should markDup for optical dup in PCR-free genomes
-cram: 'TRUE' # TRUE to convert bam to cram, values other than TRUE will not convert. #Keep bam for panel and exome if addtional analyses are anticipated
+#cram: 'TRUE' # TRUE to convert bam to cram, values other than TRUE will not convert. #Keep bam for panel and exome if addtional analyses are anticipated
 #recal_bam: 'FALSE' #TRUE to merge chr bams to single sample recalibrated bam
-multiqc: 'TRUE' # will run only if True
-picardQC: 'FALSE'
-CoNVaDING: 'FALSE'
-SCRAMble: 'TRUE' #will run only if TRUE
-GATKgvcf: 'FALSE' # will run only if TRUE
 cutadapt: 'FALSE' #TRUE to trim adaptor using cutadapt, #FALSE not to trim.
 regions: '/home/$USER/git/NGS_genotype_calling/NGS_generic_OGL/chr_split_24_coords.txt' #chr1 to chr22, chrX, chrY
-deepvariant: 'TRUE'
-#deepvariantGVCFmerge: 'FALSE' #GVCF files from deepvariant will be merged.
-freebayes_phasing: 'TRUE' #if FALSE, then produces deepvariant-glnexus output only in genome pipeline; If FALSE, automap will not run
-coverage: 'TRUE'
-manta: 'TRUE'
 lane_pair_delim: ['_R1_001.fastq', '_R2_001.fastq'] #OGL & DavidM:'_R1_001', '_R2_001'
 #samples: ['41001412010527_realigned_recal']
 #read_groups: ['@RG\\tID:Lineagen_41001412010527\\tSM:Lineagen_41001412010527\\tPL:ILLUMINA'] # not used in current version of Snakefiles
-bcmlocus: 'TRUE' #calling X-Opsin locus
 bcmlocus_bed: '/data/OGL/resources/bcm/xgen-v2-chrX154mb_v1.bed'
 snakemake_version: 'snakemake/7.32.4' #updated 1/3/2025 from 7.19.1
 manta_version: 'manta/1.6.0-fork-jykr' #updated 5/17/2022 from manta/1.6.0 for errors for some samples
@@ -48,6 +38,7 @@ samblaster_version: 'samblaster/0.1.26' #from 0.1.26 Aug 2023
 sambamba_version: 'sambamba/1.0.0' #from 0.8.1 Aug 2023
 annovar_version: 'annovar/2020-06-08' #updated from 2019-10-24 on 3/4/2022
 crossmap_version: 'crossmap/0.6.5' #updated from 0.5.4 Aug 2023
+mutserve_version: 'v2.0.3' #updated from v2.0.0-rc12, 10/21/2025
 #ref_genome: '/fdb/GATK_resource_bundle/b37-2.8/human_g1k_v37_decoy.fasta'
 old_cram_ref: '/data/OGL/resources/1000G_phase2_GRCh37/human_g1k_v37_decoy.fasta' #realignment
 cram_ref: '/data/OGL/resources/genomes/NCBI/GRCh38Decoy/genome.fa' #no-realignment

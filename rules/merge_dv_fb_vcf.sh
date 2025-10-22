@@ -2,7 +2,7 @@
 #SBATCH --gres=lscratch:200
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16g
-#SBATCH --partition=quick
+#SBATCH --partition=norm
 #SBATCH --time=6:0:0
 
 set -e
@@ -12,6 +12,7 @@ WORK_DIR=/lscratch/$SLURM_JOB_ID
 #to merge the three vcf types from 2 or more Step 1 runs (NGS_genotype_calling).
 
 module load $(grep "^samtools_version:" $config | head -n 1 | cut -d"'" -f 2)
+ngstype=$(grep "^ngstype:" $config | head -n 1 | cut -d"'" -f 2)
 
 mkdir -p $WORK_DIR/input
 vcf_inputs=""
@@ -20,8 +21,16 @@ for vcf in freebayes/*.freebayes.vcf.gz; do
 bcftools merge --merge none --missing-to-ref --output-type z --threads 8 $vcf_inputs -o $WORK_DIR/input/freebayes.vcf.gz && tabix -p vcf /$WORK_DIR/input/freebayes.vcf.gz &
 
 vcf_inputs=""
-for vcf in deepvariant/*.dv.hf.vcf.gz; do
+case "${ngstype^^}" in
+ "EXOME"|"WES"|"ES"|"PANEL")
+  for vcf in deepvariant/*.dv.phased.vcf.gz; do
 	vcf_inputs+="$vcf "; done
+  ;;
+ *)
+  for vcf in deepvariant/*.dv.hf.vcf.gz; do
+	vcf_inputs+="$vcf "; done
+  ;;
+esac
 bcftools merge --merge none --missing-to-ref --output-type z --threads 8 $vcf_inputs -o $WORK_DIR/input/dv.hf.vcf.gz
 tabix -p vcf $WORK_DIR/input/dv.hf.vcf.gz
 

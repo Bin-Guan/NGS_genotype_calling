@@ -199,7 +199,6 @@ rm -rf prioritization/00log
 rm -rf prioritization/madeline/madeline.done
 rm -rf prioritization/temp
 rm -rf prioritization/*.gt3.anno3.dvg.vcf.gz*
-rm -rf prioritization/*.gt3.anno3.dvg.vcf.gz*
 rm -rf prioritization/*.gemini.db
 
 #rm -rf old_bam bam cram
