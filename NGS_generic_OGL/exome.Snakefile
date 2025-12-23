@@ -1054,6 +1054,7 @@ rule manta:
 		cp $RUNDIR/manta.{wildcards.sample}.annotated.tsv {output}
 		"""
 
+localrules: bcm_locus
 rule bcm_locus:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
@@ -1071,16 +1072,24 @@ rule bcm_locus:
 		avinput = temp('bcmlocus/{sample}.avinput'),
 		bcm_out = 'bcmlocus/{sample}.bcmlocus.tsv'
 	threads: 8
+	resources: res=1
 	shell:
 		"""
 		export TMPDIR=/lscratch/$SLURM_JOB_ID
-		module load {config[samtools_version]} {config[bazam_version]} {config[bwa_version]} {config[samblaster_version]} {config[sambamba_version]}
+		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
+		if [[ $(module list 2>&1 | grep "bazam" | wc -l) -lt 1 ]]; then module load {config[bazam_version]}; fi
+		if [[ $(module list 2>&1 | grep "bwa" | wc -l) -lt 1 ]]; then module load {config[bwa_version]}; fi
+		if [[ $(module list 2>&1 | grep "samblaster" | wc -l) -lt 1 ]]; then module load {config[samblaster_version]}; fi
+		if [[ $(module list 2>&1 | grep "sambamba" | wc -l) -lt 1 ]]; then module load {config[sambamba_version]}; fi
 		RG=$(samtools view -H {input.bam} | grep "^@RG" | head -n 1 | sed 's/\t/\\\\t/g')
-		java -Xmx16g -jar $BAZAMPATH/bazam.jar -bam {input.bam} --regions chrX:153929000-154373500 \
-		| bwa mem -t 6 -K 100000000 -M -Y -B 4 -O 6 -E 1 -p -R $RG /data/OGL/resources/genomes/GRCh38/GRCh38Decoy2.fa - \
+		samtools view --threads $SLURM_CPUS_PER_TASK -b {input.bam} --output $TMPDIR/{wildcards.sample}.chrX.bam chrX
+		samtools index -@ $SLURM_CPUS_PER_TASK $TMPDIR/{wildcards.sample}.chrX.bam
+		java -Xmx32g -jar $BAZAMPATH/bazam.jar -bam $TMPDIR/{wildcards.sample}.chrX.bam --regions chrX:153929000-154373500 \
+		| bwa mem -t 4 -M -Y -B 4 -O 6 -E 1 -p -R $RG {config[GRCh38Decoy2]} - \
 		| samblaster -M --addMateTags --quiet \
-		| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t 6 -o {output.bam} \
-			<(sambamba view -S -f bam -l 0 -t 6 /dev/stdin)
+		| sambamba sort -u --tmpdir=/lscratch/$SLURM_JOB_ID -t 4 -o {output.bam} \
+			<(sambamba view -S -f bam -l 0 -t 16 /dev/stdin)
+		rm $TMPDIR/{wildcards.sample}.chrX.bam $TMPDIR/{wildcards.sample}.chrX.bam.bai
 		if [[ $(module list 2>&1 | grep "mosdepth" | wc -l) -lt 1 ]]; then module load {config[mosdepth_version]}; fi
 		if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		mkdir -p bcmlocus/mosdepth

@@ -6,7 +6,15 @@
 
 #Create a project folder, then globus transfer data to the project folder such as eyeGENE_ORF15
 #run outside the project folder
+
 ProjectDir=${1%/}
+
+WORK_DIR=$PWD
+if (( $(echo $WORK_DIR | grep "/data/OGL" | wc -l) > 0 )); then
+ find $ProjectDir -type f ! -group OGL -print -exec chgrp OGL -- {} +
+ chmod --recursive g+rw $ProjectDir
+fi
+
 TIMESTAMP=$(date "+%Y%m%d-%H%M%S")
 mkdir -p $ProjectDir-$TIMESTAMP/old_bam $ProjectDir-$TIMESTAMP/vcf_nisc/gvcf $ProjectDir-$TIMESTAMP/vcf_nisc/vcf $ProjectDir-$TIMESTAMP/summary
 
@@ -29,7 +37,7 @@ mv $ProjectDir/*.* $ProjectDir-$TIMESTAMP/
 rm -rf $ProjectDir
 mv $ProjectDir-$TIMESTAMP $ProjectDir
 cd $ProjectDir
-bash ~/git/NGS_genotype_calling/make_bam_metadatafile.sh
+bash ~/git/NGS_genotype_calling/make_metadata_scripts/make_bam_metadatafile.sh
 
 
 #to be continued

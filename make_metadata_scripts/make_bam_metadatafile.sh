@@ -1,4 +1,8 @@
 #!/bin/bash
+#SBATCH --gres=lscratch:10
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8g
+#SBATCH --time=2:00:00
 
 # only the first @RG from the old bam/cram is used.
 # on Notepad++ the RG \t shows as \t. If editing manually, keep one \t.  This is different to fastq file metadata_file where it showed as \\t. Because  different processings in snakefile, do not switch these types.
