@@ -609,7 +609,7 @@ rule clair3:
 		cp $LWORK_DIR/phased_merge_output.vcf.gz {output.phasedvcf}
 		cp $LWORK_DIR/phased_merge_output.vcf.gz.tbi {output.phasedtbi}
 		echo "lscratch use after clair3:"
-		du -sh $WORK_DIR
+		du -sh $LWORK_DIR
 		bcftools norm --multiallelics -any --output-type u {output.phasedvcf} \
 			| bcftools norm -d exact --output-type u - \
 			| bcftools filter --threads $(({threads}-2)) --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
