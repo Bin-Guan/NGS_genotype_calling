@@ -146,7 +146,8 @@ rule all:
 		'bcmlocus/combine.bcmlocus.done' if 'bcmlocus' in config['output_type'] else 'dummy.txt',
 		expand('jax-cnv/{sample}.merge.bed', sample=list(SAMPLE_LANEFILE.keys())) if 'jax-cnv' in config['output_type'] else 'dummy.txt',
 		expand('clinSV/{sample}/{sample}.clinSV.RARE_PASS_GENE.eG.filtered.xlsx', sample=list(SAMPLE_LANEFILE.keys())) if 'clinSV' in config['output_type'] else 'dummy.txt',
-		'orf15/combine.orf15.done' if 'orf15' in config['output_type'] else 'dummy.txt'
+		'orf15/combine.orf15.done' if 'orf15' in config['output_type'] else 'dummy.txt',
+		'STRipy/combine.STRipy.done' if 'STRipy' in config['output_type'] else 'dummy.txt'
 
 localrules: dummy
 rule dummy:
@@ -454,6 +455,7 @@ rule fastqc:
 		mkdir -p fastqc/{wildcards.sample}
 		fastqc -t {threads} -o {output} {input.bam}
 		"""
+localrules: multiqc_fastqc
 rule multiqc_fastqc:
 	input:
 		expand('fastqc/{sample}', sample=list(SAMPLE_LANEFILE.keys()))
@@ -548,7 +550,7 @@ rule mean_coverage:
 		"""
 
 # 30% smaller!
-rule bam_to_cram:
+rule bam2cram:
 	input:
 		bam = 'sample_bam/{sample}.markDup.bam',
 		bai = 'sample_bam/{sample}.markDup.bam.bai'
@@ -590,8 +592,8 @@ rule clair3:
 		gvcftbi = 'clair3/gvcf/{sample}.clr3.gvcf.gz.tbi',
 		phasedvcf = 'clair3/vcf/{sample}.clr3.phased.vcf.gz',
 		phasedtbi = 'clair3/vcf/{sample}.clr3.phased.vcf.gz.tbi',
-		filteredvcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz',
-		filteredtbi = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi',
+		#filteredvcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz',
+		#filteredtbi = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi',
 	threads: 56
 	shell:
 		"""
@@ -610,28 +612,54 @@ rule clair3:
 		cp $LWORK_DIR/phased_merge_output.vcf.gz.tbi {output.phasedtbi}
 		echo "lscratch use after clair3:"
 		du -sh $LWORK_DIR
-		bcftools norm --multiallelics -any --output-type u {output.phasedvcf} \
-			| bcftools norm -d exact --output-type u - \
-			| bcftools filter --threads $(({threads}-2)) --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
-		sleep 2
-		tabix -f -p vcf {output.filteredvcf}
 		#bcftools view ORF15 + PEAD, then bcftools concat
+		"""
+#bcftools norm --multiallelics -any --output-type u {output.phasedvcf} \
+#	| bcftools norm -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u - \
+#	| bcftools filter --threads $(({threads}-2)) --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
+#sleep 2
+#tabix -f -p vcf {output.filteredvcf}
+
+rule glnexus_clair3:
+	input:
+		vcf = expand('clair3/gvcf/{sample}.clr3.gvcf.gz', sample=list(SAMPLE_LANEFILE.keys()))
+	output:
+		'clair3/clair3.gvcf.merge.done'
+	threads: 72
+	shell:
+		"""
+		module load {config[glnexus_version]} {config[samtools_version]}
+		WORK_DIR="/lscratch/${{SLURM_JOB_ID}}"
+		glnexus_cli --dir /lscratch/$SLURM_JOB_ID/glnexus --config /data/OGL/resources/clair3/clair3.yml \
+			--threads $(({threads} - 6)) --mem-gbytes 512 \
+			{input.vcf} \
+			| bcftools view --threads $((72 - 6)) -Ob -o $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf
+		df -h $WORK_DIR
+		bcftools norm --multiallelics -any --output-type u --no-version $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf \
+			| bcftools norm -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u --no-version - \
+			| bcftools +fill-tags - -Ou -- -t AC,AC_Hom,AC_Het,AN,AF \
+			| bcftools annotate --threads $(({threads} - 6)) --set-id 'clr3g_%CHROM\:%POS%REF\>%ALT' --no-version - -Oz \
+				-o clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
+		tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
+		touch {output}
 		"""
 
 rule merge_clair3:
 	input:
-		vcf = expand('clair3/vcf/{sample}.clr3.filtered.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
-		tbi = expand('clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys()))
+		vcf = expand('clair3/vcf/{sample}.clr3.phased.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
+		tbi = expand('clair3/vcf/{sample}.clr3.phased.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys())),
+		glnexus = 'clair3/clair3.gvcf.merge.done'
 	output:
 		'clair3/clair3.merge.done'
-	threads: 8
+	threads: 16
 	shell:
 		"""
 		if [[ $(module list 2>&1 | grep "samtools" | wc -l) -lt 1 ]]; then module load {config[samtools_version]}; fi
+		LWORK_DIR=/lscratch/$SLURM_JOB_ID
 		case "{input.vcf}" in
 			*\ *)
 				bcftools merge --merge none --missing-to-ref --output-type u --threads {threads} {input.vcf} \
-					| bcftools annotate --threads {threads} --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --no-version - -Ou \
+					| bcftools annotate --threads {threads} --set-id 'clr3_%CHROM\:%POS%REF\>%ALT' --no-version - -Ou \
 					| bcftools +fill-tags - -Ov -- -t AC,AC_Hom,AC_Het,AN,AF \
 					| sed 's#0/0:\.:\.:\.#0/0:10:10:10,0#g' - \
 					| bgzip -f > clair3/{config[analysis_batch_name]}.clr3.vcf.gz
@@ -639,11 +667,23 @@ rule merge_clair3:
 				;;
 			*)
 				bcftools +fill-tags {input.vcf} -Ou -- -t AC,AC_Hom,AC_Het,AN,AF \
-					 | bcftools annotate --threads {threads} --set-id 'clr_%CHROM\:%POS%REF\>%ALT' --no-version -\
+					 | bcftools annotate --threads {threads} --set-id 'clr3_%CHROM\:%POS%REF\>%ALT' --no-version -\
 					  -Oz -o clair3/{config[analysis_batch_name]}.clr3.vcf.gz
 				tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.vcf.gz
 				;;
 		esac
+		mkdir -p prioritization
+		bcftools annotate --threads {threads} -a clair3/{config[analysis_batch_name]}.clr3.vcf.gz -c FORMAT/GT,FORMAT/PS \
+  			-Oz -o prioritization/{config[analysis_batch_name]}.clr3.glnexus.ps.vcf.gz \
+  			clair3/{config[analysis_batch_name]}.{config[gt_call_version]}.clr3.vcf.gz
+		tabix -f -p vcf clair3/{config[analysis_batch_name]}.{config[gt_call_version]}.clr3.vcf.gz
+		#common to glnexus and hard-filtered vcf
+		#bcftools isec -p $LWORK_DIR -n=2 -w1 --collapse none --output-type u --threads {threads} \
+		#	clair3/{config[analysis_batch_name]}.clr3.vcf.gz \
+		#	clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
+		#bcftools annotate --threads {threads} --set-id 'clr3g_%CHROM\:%POS%REF\>%ALT' --no-version \
+		#	$LWORK_DIR/0000.bcf -Oz -o prioritization/{config[analysis_batch_name]}.clr3.glnexus-phased.vcf.gz
+		#tabix -f -p vcf prioritization/{config[analysis_batch_name]}.clr3.glnexus-phased.vcf.gz
 		touch {output}
 		"""
 
@@ -940,7 +980,7 @@ rule scramble:
 #--bind /gpfs,/spin1,/data,/lscratch,/scratch,/fdb
 #finished in seconds, <100Mb memory
 
-#localrules: scramble_annotation
+localrules: scramble_annotation
 rule scramble_annotation:
 	input:
 		mei = 'scramble/{sample}_MEIs.txt'
@@ -949,6 +989,7 @@ rule scramble_annotation:
 		annovarR = temp('scramble_anno/{sample}.forR.txt'),
 		anno = 'scramble_anno/{sample}.scramble.tsv',
 		anno_xlsx = 'scramble_anno/{sample}.scramble.xlsx'
+	resources: res=1
 	shell:
 		"""
 		if (( $(module list 2>&1 | grep "annovar" | wc -l) < 1 )); then module load {config[annovar_version]}; fi
@@ -1310,6 +1351,51 @@ rule combine_orf15:
 		touch {output}
 		"""
 
+localrules: STRipy
+rule STRipy:
+	input:
+		bam = 'sample_bam/{sample}.markDup.bam',
+		bai = 'sample_bam/{sample}.markDup.bam.bai'
+	output:
+		tsv =  'STRipy/{sample}.STRipy.tsv'
+	resources: res=1
+	shell:
+		"""
+		if (( $(module list 2>&1 | grep "stripy-pipeline" | wc -l) == 0 )); then module load {config[stripy_version]}; fi
+		if (( $(module list 2>&1 | grep "bwa/" | wc -l) == 0 )); then module load {config[bwa_version]}; fi
+		python3 $STRIPY_PIPELINE_HOME/stri.py \
+ 		 --genome hg38 \
+ 		 --reference {config[ref_genome]} \
+ 		 --output STRipy \
+ 	 	 --locus AFF2,AR,ARX_1,ARX_2,ATN1,ATXN1,ATXN10,ATXN2,ATXN3,ATXN7,ATXN8OS,BEAN1,C9ORF72,CACNA1A,CBL,CNBP,COMP,DAB1,DIP2B,DMD,DMPK,FGF14,FMR1,FOXL2,FXN,GIPC1,GLS,HOXA13_1,HOXA13_2,HOXA13_3,HOXD13,HTT,JPH3,LRP12,MARCHF6,NIPA1,NOP56,NOTCH2NLC,NUTM2B-AS1,PABPN1,PHOX2B,PPP2R2B,PRDM12,RAPGEF2,RFC1,RILPL1,RUNX2,SAMD12,SOX3,STARD7,TBP,TBX1,TCF4,TNRC6A,XYLT1,YEATS2,ZIC2,ZIC3 \
+ 	 	 --config /data/OGL/resources/STRipy/config.json \
+		 --input {input.bam}
+		awk -F "\t" 'BEGIN{{OFS="\t"}} NR==1 {{print "Sample", $0}} NR>1 {{print "{wildcards.sample}", $0}}' \
+			STRipy/{wildcards.sample}.markDup.bam.tsv > {output}
+		rm STRipy/{wildcards.sample}.markDup.bam.tsv
+		mv STRipy/{wildcards.sample}.markDup.bam.html STRipy/{wildcards.sample}.STRipy.html
+		"""
+
+localrules: combine_STRipy
+rule combine_STRipy:
+	input:
+		tsv = expand('STRipy/{sample}.STRipy.tsv', sample=list(SAMPLE_LANEFILE.keys()))
+	output:
+		'STRipy/combine.STRipy.done'
+	shell:
+		"""
+		head -n 1 {input.tsv[0]} > STRipy/all.STRipy.{config[analysis_batch_name]}.tsv
+		for file in {input.tsv}; do
+			grep -e "True" -e "intermediate" -e "pathogenic" $file >> STRipy/all.STRipy.{config[analysis_batch_name]}.tsv
+ 		done
+		if [[ $(cat STRipy/all.STRipy.{config[analysis_batch_name]}.tsv | wc -l) -gt 1 ]]; then
+		 	if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
+			Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/STRipy.R \
+				STRipy/all.STRipy.{config[analysis_batch_name]}.tsv \
+				STRipy/all.STRipy.{config[analysis_batch_name]}.xlsx
+		fi
+		touch {output}
+		"""
 
 #<40min, 9g max mem
 rule split_bam_by_chr:
@@ -1420,7 +1506,7 @@ rule cat_fbvcfs:
 #genome: <30min, <2.5gb
 rule automap_roh:
 	input:
-		vcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz'
+		vcf = 'clair3/vcf/{sample}.clr3.phased.vcf.gz'
 	output:
 		tsv = temp('AutoMap/{sample}/{sample}.HomRegions.tsv'),
 		bed = temp('AutoMap/{sample}/{sample}.HomRegions.bed'),

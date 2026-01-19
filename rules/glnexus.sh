@@ -42,7 +42,7 @@ case "${ngstype^^}" in
 		| bcftools annotate --threads 54 --set-id 'dvg_%CHROM\:%POS%REF\>%ALT' --no-version - -Oz -o deepvariant/$analysis_batch_name.$gt_call_version.vcf.gz
 	tabix -f -p vcf deepvariant/$analysis_batch_name.$gt_call_version.vcf.gz
 	;;
-	"CLAIR3")
+	"GENOME-CLAIR3")
 	glnexus_cli --dir /lscratch/$SLURM_JOB_ID/glnexus --config /data/OGL/resources/clair3/clair3.yml \
 		--threads 54 --mem-gbytes 128 \
 		clair3/gvcf/*.gvcf.gz \

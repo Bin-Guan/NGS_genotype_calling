@@ -52,6 +52,13 @@
 		"mem" : "512g",
 		"extra" : "--gres=lscratch:600"
 	},
+	"glnexus_clair3" :
+	{
+		"partition" : "largemem",
+		"time" : "8:00:00",
+		"mem" : "512g",
+		"extra" : "--gres=lscratch:600"
+	},
 	"bcm_locus":
 	{
 		"partition" : "norm",
