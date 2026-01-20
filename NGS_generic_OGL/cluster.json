@@ -68,9 +68,9 @@
 	},
 	"jaxcnv" :
 	{
-		"partition" : "norm,quick",
+		"partition" : "norm",
 		"extra" : "--gres=lscratch:150",
-		"time" : "3:00:00",
+		"time" : "8:00:00",
 		"mem" : "64g"
 	},
 	"clinsv" :
