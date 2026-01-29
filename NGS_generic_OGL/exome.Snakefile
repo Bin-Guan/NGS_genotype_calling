@@ -913,7 +913,7 @@ rule dv_whatshap:
 		tabix -f -p vcf {output.phasedvcf}
 		"""
 
-localrules: merge_glnexus_phased_vcf
+localrules: merge_deepvariant_glnexusVcf
 rule merge_deepvariant_glnexusVcf:
 	input:
 		vcf = expand('deepvariant/vcf/{sample}.dv.glnexus.phased.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),

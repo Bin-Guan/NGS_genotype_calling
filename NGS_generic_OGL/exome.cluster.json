@@ -16,7 +16,7 @@
 	{
 		"mem" : "24g"
 	},
-	"deepvariant" :
+	"deepvariant":
 	{
 		"partition" : "norm",
 		"time" : "6:00:00",

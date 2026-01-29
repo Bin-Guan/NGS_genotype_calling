@@ -674,9 +674,9 @@ rule merge_clair3:
 		esac
 		mkdir -p prioritization
 		bcftools annotate --threads {threads} -a clair3/{config[analysis_batch_name]}.clr3.vcf.gz -c FORMAT/GT,FORMAT/PS \
-  			-Oz -o prioritization/{config[analysis_batch_name]}.clr3.glnexus.ps.vcf.gz \
-  			clair3/{config[analysis_batch_name]}.{config[gt_call_version]}.clr3.vcf.gz
-		tabix -f -p vcf clair3/{config[analysis_batch_name]}.{config[gt_call_version]}.clr3.vcf.gz
+  			-Oz -o prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz  \
+  			clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
+		tabix -f -p vcf prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz
 		#common to glnexus and hard-filtered vcf
 		#bcftools isec -p $LWORK_DIR -n=2 -w1 --collapse none --output-type u --threads {threads} \
 		#	clair3/{config[analysis_batch_name]}.clr3.vcf.gz \
@@ -1385,18 +1385,14 @@ rule combine_STRipy:
 	shell:
 		"""
 		head -n 1 {input.tsv[0]} > STRipy/all.STRipy.{config[analysis_batch_name]}.tsv
-		for file in {input.tsv}; do
-			grep -e "True" -e "intermediate" -e "pathogenic" $file >> STRipy/all.STRipy.{config[analysis_batch_name]}.tsv
- 		done
+		awk -v IGNORECASE=1 'BEGIN{{OFS="\t"}} ($0 ~ /(^|[^[:alnum:]_])(intermediate|pathogenic)([^[:alnum:]_]|$)/){{print $0}}' STRipy/*.STRipy.tsv >> STRipy/all.STRipy.{config[analysis_batch_name]}.tsv
+		if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 		if [[ $(cat STRipy/all.STRipy.{config[analysis_batch_name]}.tsv | wc -l) -gt 1 ]]; then
-		 	if [[ $(module list 2>&1 | grep " R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
-			Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/STRipy.R \
-				STRipy/all.STRipy.{config[analysis_batch_name]}.tsv \
-				STRipy/all.STRipy.{config[analysis_batch_name]}.xlsx
+			Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/STRipy.R STRipy/all.STRipy.{config[analysis_batch_name]}.tsv STRipy/all.STRipy.{config[analysis_batch_name]}.xlsx
 		fi
 		touch {output}
 		"""
-
+#grep -e "intermediate" -e "pathogenic" $file >> STRipy/all.STRipy.{config[analysis_batch_name]}.tsv
 #<40min, 9g max mem
 rule split_bam_by_chr:
 	input:
