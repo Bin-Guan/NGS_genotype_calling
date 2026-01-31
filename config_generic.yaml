@@ -2,7 +2,7 @@ metadata_file: 'metadata_file.csv' # if a file is not provided, the metadada fil
 lib: 'OGLv2.1' #Used for generating the metadata_file in Snakemake.wrapper.sh; for example OGLv2.1; Not used if metadata_file above is present.
 ngstype: 'genome' #panel/PANEL, exome (exome/EXOME/wes/WES/es/ES), or genome (genome/GENOME/wgs/WGS/gs/GS/genome-clair3)
 analysis_batch_name: 'batchname' # name for vcf files.
-gt_call_version: 'gt3' # version will be in the final vcf file.
+gt_call_version: 'gt3' # version will be in the final vcf file. Replace with "gt3c" for clair3 output
 genomeBuild: 'GRCh38' #GRCh37 (hg19), GRCh38 (hg38), or any other values to use ref_genome and bwa-mem2_ref below.
 ped: '' #Can leave as blank ''. Only for ChrX CNV, has to have ped extenstion, header if present has to starts with #, ie miseq0626_0719.ped
 inputFileType: 'fastq' # single_lane_fastq, fastq, bam or cram (no-realignment, cannot mix bam with cram, files in old_bam directory), bam-realign, cram-realign (can mix bam & cram; files in old_bam directory).

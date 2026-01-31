@@ -614,11 +614,27 @@ rule clair3:
 		du -sh $LWORK_DIR
 		#bcftools view ORF15 + PEAD, then bcftools concat
 		"""
-#bcftools norm --multiallelics -any --output-type u {output.phasedvcf} \
-#	| bcftools norm -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u - \
-#	| bcftools filter --threads $(({threads}-2)) --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
-#sleep 2
-#tabix -f -p vcf {output.filteredvcf}
+# bcftools norm --threads $(({threads}-2)) --multiallelics -any --output-type u {output.phasedvcf} \
+# 	| bcftools norm --threads $(({threads}-2)) -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u - \
+# 	| bcftools filter --threads $(({threads}-2)) --write-index=tbi --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
+
+localrules: clair3_hf
+rule clair3_hf:
+	input:
+		phasedvcf = 'clair3/vcf/{sample}.clr3.phased.vcf.gz',
+		phasedtbi = 'clair3/vcf/{sample}.clr3.phased.vcf.gz.tbi'
+	output:
+		filteredvcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz',
+		filteredtbi = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi',
+	threads: 8
+	shell:
+		"""
+		module load {config[samtools_version]}
+		bcftools norm --threads $(({threads}-2)) --multiallelics -any --output-type u {input.phasedvcf} \
+			| bcftools norm --threads $(({threads}-2)) -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u - \
+			| bcftools filter --threads $(({threads}-2)) --write-index=tbi --include 'filter=="PASS" & FORMAT/AD[0:1]>2' --output-type z --output {output.filteredvcf}
+		#bcftools view ORF15 + PEAD, then bcftools concat
+		"""
 
 rule glnexus_clair3:
 	input:
@@ -646,8 +662,8 @@ rule glnexus_clair3:
 
 rule merge_clair3:
 	input:
-		vcf = expand('clair3/vcf/{sample}.clr3.phased.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
-		tbi = expand('clair3/vcf/{sample}.clr3.phased.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys())),
+		vcf = expand('clair3/vcf/{sample}.clr3.filtered.vcf.gz', sample=list(SAMPLE_LANEFILE.keys())),
+		tbi = expand('clair3/vcf/{sample}.clr3.filtered.vcf.gz.tbi', sample=list(SAMPLE_LANEFILE.keys())),
 		glnexus = 'clair3/clair3.gvcf.merge.done'
 	output:
 		'clair3/clair3.merge.done'
@@ -673,17 +689,17 @@ rule merge_clair3:
 				;;
 		esac
 		mkdir -p prioritization
-		bcftools annotate --threads {threads} -a clair3/{config[analysis_batch_name]}.clr3.vcf.gz -c FORMAT/GT,FORMAT/PS \
-  			-Oz -o prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz  \
-  			clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
-		tabix -f -p vcf prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz
+		#bcftools annotate --threads {threads} --write-index=tbi -a clair3/{config[analysis_batch_name]}.clr3.vcf.gz -c FORMAT/GT,FORMAT/PS \
+  		#	-Oz -o prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.vcf.gz  \
+  		#	clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
+		#command above caused problem in vcf2db
 		#common to glnexus and hard-filtered vcf
-		#bcftools isec -p $LWORK_DIR -n=2 -w1 --collapse none --output-type u --threads {threads} \
-		#	clair3/{config[analysis_batch_name]}.clr3.vcf.gz \
-		#	clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
-		#bcftools annotate --threads {threads} --set-id 'clr3g_%CHROM\:%POS%REF\>%ALT' --no-version \
-		#	$LWORK_DIR/0000.bcf -Oz -o prioritization/{config[analysis_batch_name]}.clr3.glnexus-phased.vcf.gz
-		#tabix -f -p vcf prioritization/{config[analysis_batch_name]}.clr3.glnexus-phased.vcf.gz
+		bcftools isec -p $LWORK_DIR -n=2 -w1 --collapse none --output-type z --threads {threads} \
+			clair3/{config[analysis_batch_name]}.clr3.vcf.gz \
+			clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
+		bcftools annotate --threads {threads} --write-index=tbi --set-id 'clr3g_%CHROM\:%POS%REF\>%ALT' \
+			-a clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz -c INFO \
+			$LWORK_DIR/0000.vcf.gz -Oz -o prioritization/{config[analysis_batch_name]}.{config[gt_call_version]}.clr3.vcf.gz
 		touch {output}
 		"""
 
@@ -1502,7 +1518,7 @@ rule cat_fbvcfs:
 #genome: <30min, <2.5gb
 rule automap_roh:
 	input:
-		vcf = 'clair3/vcf/{sample}.clr3.phased.vcf.gz'
+		vcf = 'clair3/vcf/{sample}.clr3.filtered.vcf.gz'
 	output:
 		tsv = temp('AutoMap/{sample}/{sample}.HomRegions.tsv'),
 		bed = temp('AutoMap/{sample}/{sample}.HomRegions.bed'),
