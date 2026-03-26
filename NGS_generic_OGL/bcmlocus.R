@@ -58,5 +58,5 @@ annovar_edit <- left_join(annovar, bcmlocus, by=c("caller","Gene","HGVSc", "HGVS
 #   replace_na(list(Annotation = "", Function = "", ACMG_Class = ""))
   
 write_tsv(annovar_edit, file = annovar_edited_file, na=".")
-openxlsx::write.xlsx(list("bcm" = annovar_edit), file = annovar_edited_excelFile, firstRow = TRUE, firstCol = TRUE)
+#openxlsx::write.xlsx(list("bcm" = annovar_edit), file = annovar_edited_excelFile, firstRow = TRUE, firstCol = TRUE)
 

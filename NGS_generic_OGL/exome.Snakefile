@@ -1070,7 +1070,7 @@ rule bcm_locus:
 		vcf = 'bcmlocus/vcf/{sample}.vcf.gz',
 		vcf_tbi = 'bcmlocus/vcf/{sample}.vcf.gz.tbi',
 		avinput = temp('bcmlocus/{sample}.avinput'),
-		bcm_out = 'bcmlocus/{sample}.bcmlocus.tsv'
+		bcm_out = 'bcmlocus/tsv/{sample}.bcmlocus.tsv'
 	threads: 8
 	resources: res=1
 	shell:
@@ -1150,7 +1150,7 @@ rule bcm_locus:
 			if [[ $(module list 2>&1 | grep "R/" | wc -l) -lt 1 ]]; then module load {config[R_version]}; fi
 			Rscript ~/git/NGS_genotype_calling/NGS_generic_OGL/bcmlocus.R \
 				/data/OGL/resources/bcmlocus.xlsx \
-				{wildcards.sample} bcmlocus/{wildcards.sample}.avinput."$ver"_multianno.txt {output.bcm_out} {output.bcm_out}.xlsx
+				{wildcards.sample} bcmlocus/{wildcards.sample}.avinput."$ver"_multianno.txt {output.bcm_out}
 			rm bcmlocus/{wildcards.sample}.avinput."$ver"_multianno.txt
 		else
 			touch {output.bcm_out}
@@ -1161,7 +1161,7 @@ rule bcm_locus:
 localrules: combine_bcmlocus
 rule combine_bcmlocus:
 	input:
-		expand('bcmlocus/{sample}.bcmlocus.tsv', sample=list(SAMPLE_LANEFILE.keys()))
+		expand('bcmlocus/tsv/{sample}.bcmlocus.tsv', sample=list(SAMPLE_LANEFILE.keys()))
 	output:
 		'bcmlocus/combine.bcmlocus.done'
 	shell:

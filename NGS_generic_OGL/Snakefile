@@ -610,7 +610,7 @@ rule clair3:
 		cp $LWORK_DIR/merge_output.gvcf.gz.tbi {output.gvcftbi}
 		cp $LWORK_DIR/phased_merge_output.vcf.gz {output.phasedvcf}
 		cp $LWORK_DIR/phased_merge_output.vcf.gz.tbi {output.phasedtbi}
-		bcftools norm --threads $(({threads}-2)) --multiallelics -any --output-type u {input.phasedvcf} \
+		bcftools norm --threads $(({threads}-2)) --multiallelics -any --output-type u {output.phasedvcf} \
 			| bcftools norm --threads $(({threads}-2)) -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u - \
 			| bcftools filter --threads $(({threads}-2)) --write-index=tbi --include 'QUAL>10 & FORMAT/AD[0:1]>3' --output-type z --output {output.filteredvcf}
 		echo "lscratch use after clair3:"
@@ -649,7 +649,7 @@ rule glnexus_clair3:
 		glnexus_cli --dir /lscratch/$SLURM_JOB_ID/glnexus --config /data/OGL/resources/clair3/clair3.yml \
 			--threads $(({threads} - 6)) --mem-gbytes 512 \
 			{input.vcf} \
-			| bcftools view --threads $((72 - 6)) -Ob -o $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf
+			> $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf
 		df -h $WORK_DIR
 		bcftools norm --multiallelics -any --output-type u --no-version $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf \
 			| bcftools norm -d exact --check-ref s --fasta-ref {config[ref_genome]} --output-type u --no-version - \
@@ -659,6 +659,7 @@ rule glnexus_clair3:
 		tabix -f -p vcf clair3/{config[analysis_batch_name]}.clr3.glnexus.vcf.gz
 		touch {output}
 		"""
+#| bcftools view --threads $((72 - 6)) -Ob -o
 
 rule merge_clair3:
 	input:
@@ -889,7 +890,7 @@ rule glnexus:
 		glnexus_cli --dir /lscratch/$SLURM_JOB_ID/glnexus --config DeepVariant \
 			--threads $(({threads} - 6)) --mem-gbytes 512 \
 			{input.vcf} \
-			| bcftools view --threads $((72 - 6)) -Ob -o $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf
+			> $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf
 		df -h $WORK_DIR
 		bcftools norm --multiallelics -any --output-type u --no-version $WORK_DIR/{config[analysis_batch_name]}.glnexus.bcf \
 			| bcftools norm --check-ref s --fasta-ref {config[ref_genome]} --output-type u --no-version - \
